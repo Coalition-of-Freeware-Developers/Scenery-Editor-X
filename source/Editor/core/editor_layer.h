@@ -39,6 +39,7 @@
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
 #include <SceneryEditorX/core/layers/layer.h>
+#include <SceneryEditorX/i18n/message.h>
 #include <SceneryEditorX/renderer/ui/panel_manager.h>
 #include <SceneryEditorX/renderer/ui/ui_renderer.h>
 #include <SceneryEditorX/scene/camera.h>
@@ -122,7 +123,7 @@ namespace SceneryEditorX
 		EditorContext m_Context;
 		std::shared_ptr<EditorLogSink> m_LogSink;
 
-		std::vector<std::pair<std::string, std::function<void()>>> m_MainMenus;
+		std::vector<std::pair<Msg, std::function<void()>>> m_MainMenus;	// Names translated when drawn
 
 		bool m_ShowAbout = false;
 		bool m_ShowMetrics = false;

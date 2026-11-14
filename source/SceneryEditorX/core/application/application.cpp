@@ -31,6 +31,7 @@
 #include "application.h"
 #include <SceneryEditorX/core/frame_profiler.h>
 #include <SceneryEditorX/core/input/input.h>
+#include <SceneryEditorX/core/localization.h>
 #include <SceneryEditorX/core/platform/windows/crash_diagnostics.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/threading/thread_pool.h>
@@ -110,6 +111,9 @@ namespace SceneryEditorX
 		ResourceCache::Init();
 		Renderer::CreateFonts();
 		m_RenderThread.Run();
+
+		// The language before the UI layer: its fonts depend on the language's script (SDL is up to ask the system)
+		Localization::Init(m_Settings, m_PlatformContext ? m_PlatformContext->GetCommandLineArgs() : std::vector<std::string>());
 
 		// The UI layer needs the renderer's swapchain and the resource directories (fonts), so it attaches last.
 		if (appData.enableUI)
@@ -224,6 +228,7 @@ namespace SceneryEditorX
 			delete layer;
 		}
 		m_UILayer = nullptr;
+		Localization::Shutdown();
 
 		// Release shared resource owners/caches
 		ResourceCache::UnloadDefaultResources();

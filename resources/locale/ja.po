@@ -1,0 +1,3022 @@
+# Machine-drafted on 2026-11-13; needs review by native speakers on Weblate.
+# Japanese translation of Scenery Editor X.
+# Copyright (C) 2026 Coalition of Freeware Developers
+# This file is distributed under the same license as Scenery Editor X (MIT).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Scenery Editor X\n"
+"Report-Msgid-Bugs-To: https://github.com/The3dVehicleguy/Scenery-Editor-X/issues\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "About Scenery Editor X"
+msgstr "Scenery Editor X について"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Airports"
+msgstr "空港"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Assets"
+msgstr "アセット"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Camera"
+msgstr "カメラ"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Choose a Navigation Keymap..."
+msgstr "ナビゲーションキーマップを選択..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Close Airport"
+msgstr "空港を閉じる"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Console"
+msgstr "コンソール"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Controls && Shortcuts..."
+msgstr "操作とショートカット..."
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "Edit"
+msgstr "編集"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Environment"
+msgstr "環境"
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "Facade"
+msgstr "ファサード"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Facade Editor"
+msgstr "ファサードエディター"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Facades"
+msgstr "ファサード"
+
+#. The main menu bar (also the hotbox's first row)
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "File"
+msgstr "ファイル"
+
+#: source/Editor/core/editor_layer.cpp
+msgid ""
+"Fly navigation\n"
+"WASD move, Q/E down/up (no button needed), RMB look\n"
+"Q/W/E pick no tools in this mode"
+msgstr ""
+"フライナビゲーション\n"
+"WASD で移動、Q/E で下降/上昇（ボタン不要）、右ボタンで見回し\n"
+"このモードでは Q/W/E でツールを選択しません"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Frame Airport"
+msgstr "空港をフレーム表示"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Frame Selection"
+msgstr "選択をフレーム表示"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Frame all (Home)"
+msgstr "すべてをフレーム表示 (Home)"
+
+#: source/Editor/core/editor_layer.cpp
+#: source/Editor/core/facade_tool.cpp
+msgid "Height"
+msgstr "高さ"
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "Help"
+msgstr "ヘルプ"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Import Object (.obj)..."
+msgstr "オブジェクトをインポート (.obj)..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Language..."
+msgstr "言語..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Latest warning or error. Click to open the console."
+msgstr "最新の警告またはエラー。クリックするとコンソールを開きます。"
+
+#: source/Editor/core/editor_layer.cpp
+#: source/Editor/core/facade_tool.cpp
+#: source/Editor/core/viewport_menus.cpp
+msgid "Library"
+msgstr "ライブラリ"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Library Browser"
+msgstr "ライブラリブラウザー"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Navigation Keymap..."
+msgstr "ナビゲーションキーマップ..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "New Viewport"
+msgstr "新規ビューポート"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Open Airport (apt.dat)..."
+msgstr "空港を開く (apt.dat)..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Opens VIEWPORT 2: its own camera, a top view to start with. Drag its tab out of the window to put it on another monitor"
+msgstr "ビューポート 2 を開きます：専用のカメラを持ち、最初はトップビューです。タブをウィンドウの外へドラッグすると別のモニターに置けます"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Orthographic projection (Numpad 5)"
+msgstr "平行投影 (Numpad 5)"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Outliner"
+msgstr "アウトライナー"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Perspective projection (Numpad 5)"
+msgstr "透視投影 (Numpad 5)"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Preferences..."
+msgstr "環境設定..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Project"
+msgstr "プロジェクト"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Properties"
+msgstr "プロパティ"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Read the project's facades and other art again after editing them on disk, and redraw"
+msgstr "ディスク上で編集したプロジェクトのファサードなどのアートを再読み込みして再描画します"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Reads the language files again, including your own in the editor's settings folder (locale), so a translation can be tested without restarting"
+msgstr "言語ファイルを再読み込みします（エディターの設定フォルダー内の locale にある自作のファイルも含む）。再起動せずに翻訳をテストできます"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Recent"
+msgstr "最近使った項目"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Reload Facades"
+msgstr "ファサードを再読み込み"
+
+#: source/Editor/core/editor_layer.cpp
+#: source/Editor/core/editor_welcome.cpp
+msgid "Reload Translations"
+msgstr "翻訳を再読み込み"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Renderer"
+msgstr "レンダラー"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Replace With"
+msgstr "置き換え"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Rescan Airports"
+msgstr "空港を再スキャン"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Rescan Libraries"
+msgstr "ライブラリを再スキャン"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Reset Layout"
+msgstr "レイアウトをリセット"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Save Airport"
+msgstr "空港を保存"
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "Scene"
+msgstr "シーン"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Scene Settings"
+msgstr "シーン設定"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Set X-Plane 12 Folder..."
+msgstr "X-Plane 12 フォルダーを設定..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Top view (Numpad 7)"
+msgstr "トップビュー (Numpad 7)"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Track Library Folder..."
+msgstr "ライブラリフォルダーを登録..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Viewport"
+msgstr "ビューポート"
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "Viewport"
+msgstr "ビューポート"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Viewport 2"
+msgstr "ビューポート 2"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Viewport: right-click for the quad menu, hold Space for the hotbox"
+msgstr "ビューポート：右クリックでクアッドメニュー、Space 長押しでホットボックス"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Wall Type"
+msgstr "壁タイプ"
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "Window"
+msgstr "ウィンドウ"
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "X-Plane"
+msgstr "X-Plane"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "X-Plane Library"
+msgstr "X-Plane ライブラリ"
+
+#: source/Editor/core/editor_project.cpp
+msgid "A new scenery pack (anything, anywhere), an airport or an asset library, created in Custom Scenery or a folder you choose"
+msgstr "新しいシーナリーパック（場所も内容も自由）、空港、またはアセットライブラリを Custom Scenery か任意のフォルダーに作成します"
+
+#: source/Editor/core/editor_project.cpp
+msgid "Add a new airport (ICAO, name, reference point) to the open project"
+msgstr "開いているプロジェクトに新しい空港（ICAO、名前、基準点）を追加します"
+
+#: source/Editor/core/editor_project.cpp
+msgid "Close Project"
+msgstr "プロジェクトを閉じる"
+
+#: source/Editor/core/editor_project.cpp
+msgid "Export Scenery Pack..."
+msgstr "シーナリーパックをエクスポート..."
+
+#: source/Editor/core/editor_project.cpp
+msgid "New Airport in Project..."
+msgstr "プロジェクトに新規空港..."
+
+#: source/Editor/core/editor_project.cpp
+msgid "New Project..."
+msgstr "新規プロジェクト..."
+
+#: source/Editor/core/editor_project.cpp
+msgid "Open Project..."
+msgstr "プロジェクトを開く..."
+
+#: source/Editor/core/editor_project.cpp
+msgid "Save Project"
+msgstr "プロジェクトを保存"
+
+#: source/Editor/core/editor_project.cpp
+msgid "Show Project Folder"
+msgstr "プロジェクトフォルダーを表示"
+
+#: source/Editor/core/editor_project.cpp
+msgid "Write the project as an X-Plane scenery pack: Earth nav data/apt.dat, the DSF tiles and the pack's own art"
+msgstr "プロジェクトを X-Plane シーナリーパックとして書き出します：Earth nav data/apt.dat、DSF タイル、パック独自のアート"
+
+#. Placeholder in the search boxes of the panels
+#: source/Editor/core/editor_ui.cpp
+msgid "Search"
+msgstr "検索"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Action"
+msgstr "操作"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Glide to top / front / side views and framed selections instead of jumping"
+msgstr "トップ・正面・側面ビューやフレーム表示した選択へ、瞬時に切り替えずに滑らかに移動します"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Interface"
+msgstr "インターフェイス"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Invert look up / down"
+msgstr "視点の上下を反転"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Invert orbit horizontally"
+msgstr "オービットの左右を反転"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Invert orbit vertically"
+msgstr "オービットの上下を反転"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Keys"
+msgstr "キー"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Language"
+msgstr "言語"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Lists languages that are less than 40% translated, and the pseudo-locale. Text that isn't translated yet stays in English"
+msgstr "翻訳率が 40% 未満の言語と疑似ロケールも一覧に表示します。未翻訳のテキストは英語のまま表示されます"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Navigation"
+msgstr "ナビゲーション"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Off: the scene turns with the mouse (Blender, 3ds Max, Maya). On: the camera moves with it"
+msgstr "オフ：マウスに合わせてシーンが回転します（Blender、3ds Max、Maya）。オン：マウスに合わせてカメラが動きます"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Orbit speed"
+msgstr "オービット速度"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Preferences"
+msgstr "環境設定"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Pseudo-locale (finds untranslated and cut-off text)"
+msgstr "疑似ロケール（未翻訳や途切れたテキストを見つける）"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Right-button look: on, moving the mouse up looks down (flight-stick style)"
+msgstr "右ボタンでの見回し：オンにすると、マウスを上に動かすと下を向きます（操縦桿方式）"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Scenery Editor X is translated by volunteers. To help, or to fix a translation, see docs/localization-translator-guide.md. To test your own copy of a language file, put it in the locale folder of the editor's settings folder and use Reload Translations."
+msgstr "Scenery Editor X はボランティアによって翻訳されています。翻訳への協力や修正については docs/localization-translator-guide.md をご覧ください。自分の言語ファイルをテストするには、エディターの設定フォルダー内の locale フォルダーに置き、「翻訳を再読み込み」を使用してください。"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Show incomplete translations"
+msgstr "未完成の翻訳を表示"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Smooth view changes"
+msgstr "ビューを滑らかに切り替え"
+
+#: source/Editor/core/editor_welcome.cpp
+#, python-brace-format
+msgid "System default: {}"
+msgstr "システムの既定：{}"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "The language of menus, panels and messages. It changes at once; scenery data (airport names, file names, X-Plane art and datarefs) stays as it is"
+msgstr "メニュー、パネル、メッセージの言語です。すぐに切り替わります。シーナリーデータ（空港名、ファイル名、X-Plane のアートや dataref）はそのままです"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Tools"
+msgstr "ツール"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Translations"
+msgstr "翻訳"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Zoom speed"
+msgstr "ズーム速度"
+
+#: source/Editor/core/editor_welcome.cpp
+#, python-brace-format
+msgid "{0} - {1}% translated"
+msgstr "{0} - {1}% 翻訳済み"
+
+#: source/Editor/core/editor_welcome.cpp
+#, python-brace-format
+msgid "{0} - {1}% translated (your file)"
+msgstr "{0} - {1}% 翻訳済み（自作ファイル）"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Night lighting"
+msgstr "夜間照明"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Pause"
+msgstr "一時停止"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Play"
+msgstr "再生"
+
+#: source/Editor/core/editor_xplane.cpp
+#: source/Editor/panels/settings_panels.cpp
+msgid "Reset"
+msgstr "リセット"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Run or freeze the sim clock that drives object animation"
+msgstr "オブジェクトのアニメーションを動かすシミュレーター時計を進めるか停止します"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Shared with every object that reads it. A change here gives this object its own value"
+msgstr "これを読み取るすべてのオブジェクトで共有されます。ここで変更すると、このオブジェクト独自の値になります"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Show LIT textures, light billboards and spill in daylight too"
+msgstr "LIT テクスチャ、ライトのビルボード、スピルライトを日中も表示します"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Speed"
+msgstr "速度"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "This object's own value. Click to follow the shared one again (the Simulation tab's, which every other object reading it follows)"
+msgstr "このオブジェクト独自の値です。クリックすると再び共有の値（これを読み取る他のすべてのオブジェクトが従う、シミュレーションタブの値）に従います"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "A new facade around this one's footprint: a sidewalk or curb around a building, a fence around a yard"
+msgstr "このファサードのフットプリントを囲む新しいファサード：建物を囲む歩道や縁石、敷地を囲むフェンスなど"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Add around..."
+msgstr "周囲に追加..."
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Circle wall: meters per wall of a circle (0.5 - 0.8 m suits curbs)"
+msgstr "円の壁：円を構成する壁 1 枚あたりのメートル数（縁石には 0.5 - 0.8 m が適しています）"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Click to pick (Shift adds)"
+msgstr "クリックで選択（Shift で追加）"
+
+#: source/Editor/core/facade_tool.cpp
+msgid ""
+"Cut curved walls into straight pieces about this long (the 3D sidewalk recipe: X-Plane stretches gaps toward\n"
+"curve vertices, so even 0.5 - 0.8 m pieces with linear handles look right)"
+msgstr ""
+"曲がった壁をこのくらいの長さの直線に分割します（3D 歩道の手法：X-Plane は隙間を曲線の頂点に向けて\n"
+"引き伸ばすため、線形ハンドルを持つ 0.5 - 0.8 m の均等な分割がきれいに見えます）"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/core/facade_tool.cpp
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "FACADE"
+msgstr "ファサード"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Facade"
+msgstr "ファサード"
+
+#: source/Editor/core/facade_tool.cpp
+msgid ""
+"Fit lengths\n"
+"Snap each wall to a length the facade's segments fill without stretching\n"
+"(hangar doors, fixed-size walls, sidewalk pieces)"
+msgstr ""
+"長さを合わせる\n"
+"各壁を、ファサードのセグメントが引き伸ばさずに埋められる長さにスナップします\n"
+"（格納庫の扉、固定サイズの壁、歩道のピースなど）"
+
+#: source/Editor/core/facade_tool.cpp
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Footprint"
+msgstr "フットプリント"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Height new facades are built at (type 2 facades snap to their floors' roofs)"
+msgstr "新しいファサードを作成する高さ（タイプ 2 のファサードはフロアの屋根にスナップします）"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "How much the facade's segments stretch to fill the wall (100% = their own size)"
+msgstr "壁を埋めるためにファサードのセグメントを伸ばす量（100% = 元のサイズ）"
+
+#: source/Editor/core/facade_tool.cpp
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Inspect"
+msgstr "インスペクト"
+
+#: source/Editor/core/facade_tool.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "Kind"
+msgstr "種類"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Make front"
+msgstr "正面にする"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Make the picked wall the facade's front (wall 1): X-Plane measures wall headings and lays the roof from it"
+msgstr "選択した壁をファサードの正面（壁 1）にします：X-Plane はこの壁を基準に壁の方位を測り、屋根を配置します"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "New facade"
+msgstr "新規ファサード"
+
+#: source/Editor/core/facade_tool.cpp
+msgid ""
+"On: every wall is built with the type set here (the DSF carries them).\n"
+"Off: X-Plane picks each wall by the facade's width and heading rules."
+msgstr ""
+"オン：すべての壁をここで設定したタイプで作成します（DSF に保存されます）。\n"
+"オフ：X-Plane がファサードの幅と方位のルールで各壁を選びます。"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Open the facade in the FACADES inspector: floors, walls, spellings, segments"
+msgstr "ファサードを「ファサード」インスペクターで開きます：フロア、壁、スペリング、セグメント"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Pick walls"
+msgstr "壁を選択"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Project facades"
+msgstr "プロジェクトのファサード"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Reverse"
+msgstr "反転"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Reverse it so the walls face out"
+msgstr "反転して壁を外向きにします"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Reverse the footprint: walls face the other way (and a fence runs the other way)"
+msgstr "フットプリントを反転します：壁が逆向きになります（フェンスは逆方向に伸びます）"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Square corners"
+msgstr "角を直角にする"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Subdivide curves"
+msgstr "曲線を分割"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "The front wall (headings in the facade's wall rules count from it)"
+msgstr "正面の壁（ファサードの壁ルールの向きはここから数えます）"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "The wall type's width / heading rules don't take this wall (X-Plane builds it anyway when walls are picked)"
+msgstr "壁タイプの幅／向きのルールがこの壁に合いません（壁を選んだ場合でも X-Plane はこの壁を作ります）"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Turn walls within 15 deg of the footprint's main axes onto them: right-angled corners"
+msgstr "フットプリントの主軸から 15 度以内の壁を主軸に合わせます：角が直角になります"
+
+#: source/Editor/core/facade_tool.cpp
+msgid ""
+"Wall labels\n"
+"Numbers, types and lengths of the selected facades' walls"
+msgstr ""
+"壁ラベル\n"
+"選択したファサードの壁の番号、タイプ、長さ"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Wall type new facades get on every wall (the first leaves the choice to X-Plane's wall rules)"
+msgstr "新しいファサードのすべての壁に使う壁タイプ（先頭の項目は X-Plane の壁ルールに任せます）"
+
+#: source/Editor/core/node_tool.cpp
+msgid "A B-spline that still passes through every node (best with evenly spaced nodes)"
+msgstr "すべてのノードを通る B スプライン（ノードが等間隔のときに最適）"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Close the line with a segment back to its first node"
+msgstr "最初のノードへ戻るセグメントでラインを閉じる"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Closed"
+msgstr "閉じた形状"
+
+#: source/Editor/core/node_tool.cpp
+msgid ""
+"Corner: no handles (Shift+C)\n"
+"Smooth: handles opposite each other, each its own length (Shift+S)\n"
+"Symmetric: mirror-image handles (Shift+Y)\n"
+"Free: handles move on their own (Shift+F)"
+msgstr ""
+"コーナー：ハンドルなし (Shift+C)\n"
+"スムーズ：ハンドルは互いに反対向きで、長さは個別 (Shift+S)\n"
+"対称：鏡像のハンドル (Shift+Y)\n"
+"フリー：ハンドルが個別に動く (Shift+F)"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Curve"
+msgstr "カーブ"
+
+#: source/Editor/core/node_tool.cpp
+msgid "DSF road subtype 0..255 (the network couldn't be read for names)"
+msgstr "DSF 道路サブタイプ 0..255（名前を得るためのネットワークを読み込めませんでした）"
+
+#: source/Editor/core/node_tool.cpp
+msgid ""
+"Edit a control polygon instead (Shift+B): the curve stays smooth (C2) and only changes near what moves.\n"
+"The nodes become the control points; a chain that already is a B-spline keeps its curve."
+msgstr ""
+"代わりに制御ポリゴンを編集します (Shift+B)：曲線は滑らか (C2) なままで、動かした部分の近くだけが変わります。\n"
+"ノードが制御点になります。すでに B スプラインのチェーンは曲線を保持します。"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Edit nodes and their handles"
+msgstr "ノードとハンドルを編集"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Handle heading (true, clockwise from north): the direction the curve leaves the node in"
+msgstr "ハンドルの方位（真方位、北から時計回り）：曲線がノードから出ていく方向"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Handle length: how far the curve reaches out of the node on this side"
+msgstr "ハンドルの長さ：この側で曲線がノードからどこまで伸びるか"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Height level at the start and end: 0 on the ground, 1 and 2 raised (bridges and overpasses)"
+msgstr "始点と終点の高さレベル：0 は地上、1 と 2 は高架（橋や陸橋）"
+
+#: source/Editor/core/node_tool.cpp
+msgid "In handle"
+msgstr "入力ハンドル"
+
+#: source/Editor/core/node_tool.cpp
+#: source/Editor/core/project_dialogs.cpp
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/environment_panel.cpp
+msgid "Latitude"
+msgstr "緯度"
+
+#: source/Editor/core/node_tool.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "Length"
+msgstr "長さ"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Levels"
+msgstr "レベル"
+
+#: source/Editor/core/node_tool.cpp
+#: source/Editor/core/project_dialogs.cpp
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/environment_panel.cpp
+msgid "Longitude"
+msgstr "経度"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/core/node_tool.cpp
+msgid "NODES"
+msgstr "ノード"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Network"
+msgstr "ネットワーク"
+
+#: source/Editor/core/node_tool.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "Nodes"
+msgstr "ノード"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Open the line at its selected node (or its first one)"
+msgstr "選択したノード（または最初のノード）でラインを開く"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Out handle"
+msgstr "出力ハンドル"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Road type"
+msgstr "道路タイプ"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Roads here"
+msgstr "ここの道路"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Roads that start or end at this node: they follow it when it moves"
+msgstr "このノードで始まる、または終わる道路：ノードを動かすと追従します"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Selected"
+msgstr "選択中"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Shape"
+msgstr "形状"
+
+#: source/Editor/core/node_tool.cpp
+msgid ""
+"Smallest radius along the curves, measured over half a meter (sharp corners at nodes and segments under a meter don't count):\n"
+"taxiway lines and roads need gentle bends"
+msgstr ""
+"曲線に沿った最小半径（0.5 m の区間で測定。ノードの鋭い角と 1 m 未満のセグメントは除外）：\n"
+"誘導路の線や道路には緩やかなカーブが必要です"
+
+#: source/Editor/core/node_tool.cpp
+msgid "The network's road types (its virtual types): the DSF subtype X-Plane draws the road with"
+msgstr "ネットワークの道路タイプ（仮想タイプ）：X-Plane が道路の描画に使う DSF サブタイプ"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Tightest bend"
+msgstr "最小カーブ半径"
+
+#: source/Editor/core/node_tool.cpp
+#: source/Editor/core/project_dialogs.cpp
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "Type"
+msgstr "タイプ"
+
+#: source/Editor/core/project_dialogs.cpp
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/outliner_panel.cpp
+msgid "Add"
+msgstr "追加"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Airport name"
+msgstr "空港名"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Art the project places from its own folder (objects/..., textures/...), with the textures it names. Library art stays in its library."
+msgstr "プロジェクトが自身のフォルダー（objects/...、textures/...）から配置するアートと、それが参照するテクスチャ。ライブラリのアートはライブラリに残ります。"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Author"
+msgstr "作成者"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "City"
+msgstr "都市"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Country"
+msgstr "国"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Create"
+msgstr "作成"
+
+#: source/Editor/core/project_dialogs.cpp
+#: source/Editor/panels/airport_panel.cpp
+msgid "Create in"
+msgstr "作成先"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Description"
+msgstr "説明"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Elevation (MSL)"
+msgstr "標高 (MSL)"
+
+#: source/Editor/core/project_dialogs.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "Export"
+msgstr "エクスポート"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "ICAO code"
+msgstr "ICAO コード"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Project name"
+msgstr "プロジェクト名"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Show Folder"
+msgstr "フォルダーを表示"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Something to start shaping: X-Plane needs at least one runway, water runway or helipad"
+msgstr "編集の出発点：X-Plane には少なくとも 1 本の滑走路、水上滑走路、またはヘリパッドが必要です"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Starter layout"
+msgstr "初期レイアウト"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "State / county"
+msgstr "州 / 郡"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "The airport's identifier in apt.dat: its ICAO code, or 3 to 7 letters and digits when it has none"
+msgstr "apt.dat での空港の識別子：ICAO コード、ない場合は 3 - 7 文字の英数字"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "The ground in the middle of the viewport (the open airport or project)"
+msgstr "ビューポート中央の地面（開いている空港またはプロジェクト）"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "The ground in the middle of the viewport: the new scenery lines up with what is open now"
+msgstr "ビューポート中央の地面：新しいシーナリーは現在開いているものに合わせて配置されます"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "The scenery pack's folder and the project file are named after it"
+msgstr "シーナリーパックのフォルダーとプロジェクトファイルにこの名前が付きます"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "The scenery pack's folder and the project file are named after it (empty: \"ICAO - Name\")"
+msgstr "シーナリーパックのフォルダーとプロジェクトファイルにこの名前が付きます（空の場合：\"ICAO - Name\"）"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid ""
+"Where the scenery is: the viewport centers there and new placements start around it.\n"
+"Leave it out and the project centers on what you place (or import)"
+msgstr ""
+"シーナリーの位置：ビューポートはここを中心にし、新しい配置もこの周辺から始まります。\n"
+"省略すると、配置（またはインポート）したものを中心にします"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Where the viewport looks"
+msgstr "ビューポートが見る位置"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "X-Plane 12's Custom Scenery folder: the pack loads in X-Plane where it's made"
+msgstr "X-Plane 12 の Custom Scenery フォルダー：作成した場所でそのまま X-Plane に読み込まれます"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "AIRPORT"
+msgstr "空港"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "AIRPORTS"
+msgstr "空港"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Add frequency"
+msgstr "周波数を追加"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Airport ID"
+msgstr "空港 ID"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Airport code or name"
+msgstr "空港コードまたは名前"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Airports with 3D scenery (gui_label 3D)"
+msgstr "3D シーナリーのある空港 (gui_label 3D)"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Airports with 3D submissions"
+msgstr "3D の投稿がある空港"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "An existing pack with this name is kept; the download gets a suffix instead"
+msgstr "同じ名前の既存パックは残され、ダウンロードしたものには接尾辞が付きます"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/airport_panel.cpp
+msgid "CONTENTS"
+msgstr "内容"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "Close"
+msgstr "閉じる"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Code (ICAO, IATA, FAA, local), name, city or country; several words narrow it down"
+msgstr "コード（ICAO、IATA、FAA、ローカル）、名前、都市、国。複数の語で絞り込めます"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Contents"
+msgstr "内容"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Create a scenery pack with a new airport"
+msgstr "新しい空港を含むシーナリーパックを作成します"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "Datum"
+msgstr "基準点"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Download list"
+msgstr "一覧をダウンロード"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Download the submission X-Plane ships and open it as a scenery pack"
+msgstr "X-Plane に同梱の投稿をダウンロードしてシーナリーパックとして開く"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/environment_panel.cpp
+msgid "Elevation"
+msgstr "標高"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Elevation (ft)"
+msgstr "標高 (ft)"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Feet above sea level (X-Plane 12 takes it from the terrain; kept for older versions)"
+msgstr "海抜高度（フィート）。X-Plane 12 は地形から取得します（旧バージョン用に保持）"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Fetch https://gateway.x-plane.com/apiv1/airports (kept for a day)"
+msgstr "https://gateway.x-plane.com/apiv1/airports を取得します（1 日間保持）"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Folder the scenery pack is created in (Custom Scenery by default)"
+msgstr "シーナリーパックを作成するフォルダー（既定は Custom Scenery）"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "Frame"
+msgstr "フレーム表示"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Gateway"
+msgstr "Gateway"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Global Airports is read-only: Save As puts your edits in a pack of your own"
+msgstr "Global Airports は読み取り専用です：「名前を付けて保存」で編集内容を自分のパックに保存します"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "ID"
+msgstr "ID"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Index the apt.dat files of the X-Plane install again"
+msgstr "X-Plane インストールの apt.dat ファイルのインデックスを再作成します"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Install"
+msgstr "インストール"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Install in"
+msgstr "インストール先"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Install recommended..."
+msgstr "推奨をインストール..."
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Install selected..."
+msgstr "選択項目をインストール..."
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "List the pack in Custom Scenery/scenery_packs.ini so X-Plane loads it with top priority"
+msgstr "パックを Custom Scenery/scenery_packs.ini に登録し、X-Plane が最優先で読み込むようにします"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Load the airport into the scene"
+msgstr "空港をシーンに読み込む"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Look the airport up on the Scenery Gateway"
+msgstr "Scenery Gateway で空港を検索します"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Look up on the Gateway"
+msgstr "Gateway で検索"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/airport_panel.cpp
+msgid "METADATA"
+msgstr "メタデータ"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "Name"
+msgstr "名前"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "New Airport..."
+msgstr "新規空港..."
+
+#: source/Editor/panels/airport_panel.cpp
+msgid ""
+"No airport open.\n"
+"Double-click one under Installed, pull one from the Gateway, or create a new one."
+msgstr ""
+"空港が開かれていません。\n"
+"「Installed」の空港をダブルクリックするか、Gateway から取得するか、新規作成してください。"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "Open"
+msgstr "開く"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Open an airport data file from anywhere"
+msgstr "任意の場所から空港データファイルを開きます"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Open apt.dat..."
+msgstr "apt.dat を開く..."
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Pack folder name"
+msgstr "パックのフォルダー名"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Read-only source: asks for a scenery pack folder"
+msgstr "読み取り専用のソース：シーナリーパックのフォルダーを尋ねます"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Refresh list"
+msgstr "一覧を更新"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Rescan"
+msgstr "再スキャン"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "Reveal"
+msgstr "場所を表示"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/project_panel.cpp
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Save"
+msgstr "保存"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Show in the viewport"
+msgstr "ビューポートに表示"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Show on the Gateway website"
+msgstr "Gateway の Web サイトで表示"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Show the scenery pack folder"
+msgstr "シーナリーパックのフォルダーを表示"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "This airport has no recommended submission"
+msgstr "この空港には推奨される投稿がありません"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "This file belongs to X-Plane. Save As writes your edits into a scenery pack of your own."
+msgstr "このファイルは X-Plane のものです。「名前を付けて保存」で編集内容を自分のシーナリーパックに書き込みます。"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Unload the airport from the scene"
+msgstr "空港をシーンからアンロードします"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Up to 7 characters, unique across X-Plane (the ICAO code when there is one)"
+msgstr "7 文字以内で、X-Plane 全体で一意（ICAO コードがあればそれ）"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Up to 7 characters: the ICAO code, or the Gateway's code for airports without one"
+msgstr "7 文字以内：ICAO コード、ない空港は Gateway のコード"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "VALIDATION"
+msgstr "検証"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "VALIDATION (PROBLEMS)"
+msgstr "検証（問題あり）"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Website"
+msgstr "Web サイト"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Where the airport datum (and the first runway) goes; WGS84 degrees"
+msgstr "空港の基準点（と最初の滑走路）の位置。WGS84 の度数"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Write the airport into another scenery pack"
+msgstr "空港を別のシーナリーパックに書き込みます"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Write the pack's apt.dat"
+msgstr "パックの apt.dat を書き込む"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "datum_lat / datum_lon metadata, or the center of the runways"
+msgstr "datum_lat / datum_lon メタデータ、または滑走路の中心"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "scenery_packs.ini"
+msgstr "scenery_packs.ini"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "ASSETS"
+msgstr "アセット"
+
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "No assets match the search"
+msgstr "検索に一致するアセットはありません"
+
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "Parent folder"
+msgstr "親フォルダー"
+
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "Rescan the folder"
+msgstr "フォルダーを再スキャン"
+
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "Show or hide the library tree"
+msgstr "ライブラリツリーの表示/非表示"
+
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "This folder is empty"
+msgstr "このフォルダーは空です"
+
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "Tile size"
+msgstr "タイルサイズ"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/console_panel.cpp
+msgid "CONSOLE"
+msgstr "コンソール"
+
+#: source/Editor/panels/console_panel.cpp
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Clear"
+msgstr "クリア"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "  Base / tops"
+msgstr "  雲底 / 雲頂"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "  Type"
+msgstr "  種類"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "DATE & TIME"
+msgstr "日付と時刻"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Date"
+msgstr "日付"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Daylight"
+msgstr "日照"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Drives the sun and moon, sim/time/* and when lights come on"
+msgstr "太陽と月、sim/time/*、ライトの点灯時刻を決めます"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+#: source/Editor/panels/settings_panels.cpp
+msgid "ENVIRONMENT"
+msgstr "環境"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Falls as snow below 0 C"
+msgstr "0 C 未満では雪として降ります"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Local time"
+msgstr "現地時刻"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Moon"
+msgstr "月"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Moon phase"
+msgstr "月齢"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Multipliers"
+msgstr "倍率"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Over time"
+msgstr "時間変化"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "PRESETS"
+msgstr "プリセット"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Place"
+msgstr "場所"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Rain"
+msgstr "雨"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Result"
+msgstr "結果"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Runway state"
+msgstr "滑走路の状態"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "SEASON"
+msgstr "季節"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "SKY CONDITION"
+msgstr "空の状態"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "SUN & MOON"
+msgstr "太陽と月"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "SURFACE"
+msgstr "地表"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Scenery art"
+msgstr "シーナリーアート"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Season"
+msgstr "季節"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Snow cover"
+msgstr "積雪"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Sun"
+msgstr "太陽"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Take latitude, longitude and elevation from the open airport's datum"
+msgstr "開いている空港の基準点から緯度、経度、標高を取得します"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Temperature"
+msgstr "気温"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Toward next"
+msgstr "次の季節へ"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "UTC"
+msgstr "UTC"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "UTC offset"
+msgstr "UTC オフセット"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Visibility"
+msgstr "視程"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "WEATHER"
+msgstr "天候"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Waves"
+msgstr "波"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Waves from"
+msgstr "波の方向"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Weather of the X-Plane 12 parity scenarios (tools/xp12_reference_probe)"
+msgstr "X-Plane 12 比較用シナリオの天候 (tools/xp12_reference_probe)"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Wetness builds while it rains and dries afterwards, instead of following the runway state"
+msgstr "滑走路の状態に従う代わりに、雨の間は濡れが増し、その後乾いていきます"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Wind from"
+msgstr "風向"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Wind speed"
+msgstr "風速"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "X-Plane's sim/weather/region/runway_friction: how wet, snowy or icy the ground is"
+msgstr "X-Plane の sim/weather/region/runway_friction：地面の濡れ、積雪、凍結の程度"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Year, month, day (local date)"
+msgstr "年、月、日（現地の日付）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "A type 1 facade from a texture: mark its panels and floors on it"
+msgstr "テクスチャから作るタイプ 1 ファサード：テクスチャ上にパネルとフロアを指定します"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "A type 2 ground facade from a cross-section (3D sidewalks, curbs, planters, low walls)"
+msgstr "断面から作るタイプ 2 の地上ファサード（3D 歩道、縁石、植え込み、低い壁）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Add a floor of this row (bottom: once at the ground, middle: repeated, top: once under the roof)"
+msgstr "この行のフロアを追加（下：地面に 1 回、中：繰り返し、上：屋根の下に 1 回）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Add a panel of this row (left / right: once at each end, center: repeated to fill the wall)"
+msgstr "この行のパネルを追加（左／右：両端に 1 回ずつ、中央：壁を埋めるように繰り返し）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Add a point after this one"
+msgstr "この点の後に点を追加"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Add a wall type (a copy of the last): narrow walls, gable ends, a front with a door... X-Plane picks one per wall by its width and heading rules"
+msgstr "壁タイプを追加します（最後のタイプのコピー）：狭い壁、切妻壁、ドア付きの正面など。X-Plane は幅と方位のルールで壁ごとに 1 つを選びます"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Arm it in the facade tool (B) and draw footprints with it"
+msgstr "ファサードツール (B) にセットしてフットプリントを描きます"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "BUILDING"
+msgstr "建物"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "CROSS-SECTION"
+msgstr "断面"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Choose a texture (copied into the facades folder when it is outside the project)"
+msgstr "テクスチャを選択します（プロジェクト外にある場合は facades フォルダーにコピーされます）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Closed: a sidewalk or planter around an area (its roof is the walking surface). Open: a curb or wall along a line"
+msgstr "閉：領域を囲む歩道や植え込み（屋根が歩行面になります）。開：線に沿った縁石や壁"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Curve pieces"
+msgstr "曲線の分割"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "DOUBLED: walls built inside and out (fences)"
+msgstr "DOUBLED：内側と外側の両方に壁を作成（フェンス）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/facade_inspector_panel.cpp
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Draw with it"
+msgstr "これで描画"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Drawn to"
+msgstr "描画距離"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Edges land on whole texture pixels (hold Alt to place them freely)"
+msgstr "エッジはテクスチャのピクセル単位に揃います（Alt を押しながらで自由に配置）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Edit selected"
+msgstr "選択項目を編集"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "FACADE EDITOR"
+msgstr "ファサードエディター"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "FLOORS_MIN / FLOORS_MAX: how many floors X-Plane may build"
+msgstr "FLOORS_MIN / FLOORS_MAX：X-Plane が作成できる階数"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Facing these degrees from the front wall, clockwise (equal: any heading). 270 - 90 is the front half"
+msgstr "正面の壁から時計回りにこの角度の範囲を向く壁（同じ値：任意の方位）。270 - 90 は前半分です"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/facade_inspector_panel.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "File"
+msgstr "ファイル"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "File name: the facade is saved as facades/<name>.fac in the project folder"
+msgstr "ファイル名：ファサードはプロジェクトフォルダーの facades/<name>.fac として保存されます"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Flat on its first wall instead of draped on the terrain"
+msgstr "地形にドレープせず、最初の壁の高さで平らにします"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Floors"
+msgstr "フロア"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "HARD_ROOF: concrete, asphalt... what aircraft and vehicles feel on the walking surface"
+msgstr "HARD_ROOF：コンクリート、アスファルトなど。航空機や車両が歩行面で感じる路面"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "HARD_ROOF: concrete, asphalt... what aircraft and vehicles feel on this floor's roofs; empty for none"
+msgstr "HARD_ROOF：コンクリート、アスファルトなど。このフロアの屋根で航空機や車両が感じる路面。空欄でなし"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "HARD_WALL / HARD_ROOF: concrete, asphalt, metal... what aircraft and vehicles feel; empty for none"
+msgstr "HARD_WALL / HARD_ROOF：コンクリート、アスファルト、金属など。航空機や車両が感じる表面。空欄でなし"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Hard surface"
+msgstr "硬質面"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Hard surfaces"
+msgstr "硬質面"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Headings"
+msgstr "方位"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Kept rows"
+msgstr "保持された行"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Lengths"
+msgstr "長さ"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Meters of curb the strip covers along it before repeating"
+msgstr "繰り返すまでにストリップが覆う縁石の長さ（メートル）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Meters of roof the rectangle covers before it repeats"
+msgstr "繰り返すまでに矩形が覆う屋根の長さ（メートル）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "More rules"
+msgstr "その他のルール"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Move up: X-Plane takes the first wall type whose rules accept a wall"
+msgstr "上へ移動：X-Plane はルールに合う最初の壁タイプを使います"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "New building"
+msgstr "新規建物"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "New sidewalk / curb"
+msgstr "新規歩道 / 縁石"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Open a facade of this project's facades folder"
+msgstr "このプロジェクトの facades フォルダーのファサードを開きます"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Open a project: new facades are saved in its facades folder"
+msgstr "プロジェクトを開いてください：新しいファサードはその facades フォルダーに保存されます"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Options"
+msgstr "オプション"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Place preview"
+msgstr "プレビューを配置"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "ROOF"
+msgstr "屋根"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "ROOF_SCALE: meters of roof one roof texture covers, along the front wall and in from it"
+msgstr "ROOF_SCALE：屋根テクスチャ 1 枚が覆う屋根の長さ（メートル）。正面の壁に沿った方向と、そこから奥への方向"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "ROOF_SLOPE: the top floor leans in by this angle; Slant: the sloped row shortens instead of stretching"
+msgstr "ROOF_SLOPE：最上階がこの角度で内側に傾きます。Slant：傾いた行を引き伸ばさずに短くします"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Redo (Ctrl+Y)"
+msgstr "やり直し (Ctrl+Y)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Remove"
+msgstr "削除"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Remove this wall type"
+msgstr "この壁タイプを削除"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Revert"
+msgstr "変更を破棄"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Roof slope"
+msgstr "屋根の傾斜"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Round every edge of this wall type to whole texture pixels"
+msgstr "この壁タイプのすべてのエッジをテクスチャのピクセル単位に丸めます"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "SCALE: meters the whole texture covers across and up"
+msgstr "SCALE：テクスチャ全体が覆う横方向と縦方向の長さ（メートル）"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "SEGMENTS"
+msgstr "セグメント"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "SEGMENT_CURVED variants bend in pieces this long (the 3D sidewalk article's 0.5 - 0.8 m)"
+msgstr "SEGMENT_CURVED のバリエーションはこの長さのピースで曲がります（3D 歩道の記事の 0.5 - 0.8 m）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Save and redraw shortly after every change, so footprints using the facade update in the viewport (once it has been saved)"
+msgstr "変更のたびにすぐ保存して再描画し、このファサードを使うフットプリントをビューポートで更新します（一度保存した後）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Save, then drop a footprint built with this facade where the viewport looks (one undo step)"
+msgstr "保存してから、このファサードで作ったフットプリントをビューポートの視線の先に置きます（取り消しは 1 回）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Segment lengths in meters, one segment (and curved variant) each"
+msgstr "セグメントの長さ（メートル）。セグメント（と曲線バリエーション）ごとに 1 つ"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Select the preview footprint and frame it in the viewport"
+msgstr "プレビューのフットプリントを選択してビューポートに収める"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Shader rows written back as they are (the textures they name were copied with the facade)"
+msgstr "そのまま書き戻されるシェーダー行（参照するテクスチャはファサードと一緒にコピー済み）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Show preview"
+msgstr "プレビューを表示"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Spell up to"
+msgstr "スペリングの上限"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Spellings"
+msgstr "スペリング"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Spellings fill every multiple of the shortest segment up to this length; longer walls repeat them"
+msgstr "スペリングは、この長さまで最短セグメントの倍数すべてを埋めます。より長い壁では繰り返されます"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Split in two"
+msgstr "2 つに分割"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Start a building from a texture or a sidewalk / curb from a cross-section, or edit a facade (the X-Plane library's are copied into the project with their textures and objects)"
+msgstr "テクスチャから建物を、断面から歩道／縁石を作成するか、ファサードを編集します（X-Plane ライブラリのものはテクスチャやオブジェクトと一緒にプロジェクトへコピーされます）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Stretched: the rectangle covers the whole roof (ROOF corners). Repeated: it covers so many meters and repeats (ROOF_SCALE)"
+msgstr "引き伸ばし：矩形が屋根全体を覆います（ROOF の角）。繰り返し：指定したメートル数を覆って繰り返します (ROOF_SCALE)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Strip length"
+msgstr "ストリップの長さ"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Surface repeat"
+msgstr "表面の繰り返し"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "TEXTURES"
+msgstr "テクスチャ"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Texture repeat"
+msgstr "テクスチャの繰り返し"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Texture size"
+msgstr "テクスチャサイズ"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "The segment sequences X-Plane fills a wall with (read-only)"
+msgstr "X-Plane が壁を埋めるセグメントの並び（読み取り専用）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "The selected (or armed) facade: this project's own in place, a library or other pack's as a copy with its textures (and a type 2's objects)"
+msgstr "選択中（またはセット中）のファサード：このプロジェクトのものはその場で、ライブラリや他のパックのものはテクスチャ（タイプ 2 ならオブジェクトも）ごとコピーして編集します"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Undo the last edit (Ctrl+Z while this panel has focus; the project's own history is separate)"
+msgstr "最後の編集を元に戻します（このパネルにフォーカスがあるときは Ctrl+Z。プロジェクトの履歴とは別です）"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "WALL TYPES"
+msgstr "壁タイプ"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Wall name"
+msgstr "壁の名前"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Walls this wide (meters) can get this wall type"
+msgstr "この幅（メートル）の壁にこの壁タイプを使えます"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "What the facade tool lists the wall type as"
+msgstr "ファサードツールに表示される壁タイプの名前"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Widths"
+msgstr "幅"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Write the .fac (and redraw every facade using it)"
+msgstr ".fac を書き込みます（それを使うすべてのファサードを再描画）"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Zoom (Ctrl + wheel over the texture)"
+msgstr "ズーム（テクスチャ上で Ctrl + ホイール）"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Edit"
+msgstr "編集"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "FACADES"
+msgstr "ファサード"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "FLOORS"
+msgstr "フロア"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Objects"
+msgstr "オブジェクト"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "On: the selected facade (or the one armed in the facade tool). Off: the facade last sent here with Inspect"
+msgstr "オン：選択中のファサード（またはファサードツールにセット中のもの）。オフ：最後に「インスペクト」で送られたファサード"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Open it in the FACADE EDITOR: this project's own facades in place, others (the X-Plane library's...) as a copy in the project's facades folder, their textures and objects copied along"
+msgstr "ファサードエディターで開きます：このプロジェクトのファサードはその場で、その他（X-Plane ライブラリのものなど）はプロジェクトの facades フォルダーにコピーして開きます。テクスチャとオブジェクトも一緒にコピーされます"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Preview this wall's spelling below"
+msgstr "この壁のスペリングを下にプレビュー"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Read the facades (and the project's other art) again after editing them on disk, and redraw"
+msgstr "ディスク上で編集したファサード（とプロジェクトの他のアート）を再読み込みして再描画します"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Reload"
+msgstr "再読み込み"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "SPELLING PREVIEW"
+msgstr "スペリングのプレビュー"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Select a facade, arm one in the facade tool (B), or Inspect one from the X-PLANE LIBRARY panel"
+msgstr "ファサードを選択するか、ファサードツール (B) にセットするか、「X-Plane ライブラリ」パネルから「インスペクト」してください"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "WALLS"
+msgstr "壁"
+
+#: source/Editor/panels/outliner_panel.cpp
+msgid "Add an entity to the scene"
+msgstr "シーンにエンティティを追加"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/outliner_panel.cpp
+msgid "OUTLINER"
+msgstr "アウトライナー"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Add Export"
+msgstr "エクスポートを追加"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Add Files..."
+msgstr "ファイルを追加..."
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Add a new airport to the project: ICAO code, name and reference point"
+msgstr "プロジェクトに新しい空港を追加します：ICAO コード、名前、基準点"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Add the airports of an apt.dat file"
+msgstr "apt.dat ファイルの空港を追加します"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "An asset library authors a library.txt (see LIBRARY below)"
+msgstr "アセットライブラリは library.txt を作成します（下の「ライブラリ」を参照）"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Created"
+msgstr "作成日時"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Edited"
+msgstr "更新日時"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Elevation (m)"
+msgstr "標高 (m)"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Export art from the project folder (real paths stay relative to it)"
+msgstr "プロジェクトフォルダーのアートをエクスポートします（実パスはフォルダーからの相対パスのまま）"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Export the X-Plane scenery pack (Ctrl+E): apt.dat, DSF tiles and the pack's own art"
+msgstr "X-Plane シーナリーパックをエクスポートします (Ctrl+E)：apt.dat、DSF タイル、パック独自のアート"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Find Used Libraries"
+msgstr "使用中のライブラリを検索"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "From apt.dat"
+msgstr "apt.dat から"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Hidden items stay in the project but aren't exported to X-Plane (and aren't drawn)"
+msgstr "非表示の項目はプロジェクトに残りますが、X-Plane にはエクスポートされません（描画もされません）"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Moves only when a save changes the content, so unchanged saves leave git clean"
+msgstr "保存で内容が変わったときだけ更新されるため、変更のない保存では git がクリーンなままです"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "New"
+msgstr "新規"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "New airport"
+msgstr "新規空港"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "New project (Ctrl+N): scenery anywhere, an airport or an asset library"
+msgstr "新規プロジェクト (Ctrl+N)：任意の場所のシーナリー、空港、アセットライブラリ"
+
+#: source/Editor/panels/project_panel.cpp
+msgid ""
+"No project open.\n"
+"File > New Project (Ctrl+N) for scenery, an airport or a library,\n"
+"or open a .edX / .sex project or a WorldEditor earth.wed.xml."
+msgstr ""
+"プロジェクトが開かれていません。\n"
+"ファイル > 新規プロジェクト (Ctrl+N) でシーナリー、空港、ライブラリを作成するか、\n"
+".edX / .sex プロジェクトや WorldEditor の earth.wed.xml を開いてください。"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Opened from the project cache: the file hasn't changed since it was last read"
+msgstr "プロジェクトキャッシュから開きました：前回の読み込み以降、ファイルは変更されていません"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/project_panel.cpp
+msgid "PROJECT"
+msgstr "プロジェクト"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Record which X-Plane library each placed asset comes from (\"associated-library\")"
+msgstr "配置した各アセットがどの X-Plane ライブラリのものかを記録します (\"associated-library\")"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Remove from project"
+msgstr "プロジェクトから削除"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Save the project (Ctrl+S); its airport's edits go in with it"
+msgstr "プロジェクトを保存します (Ctrl+S)。空港の編集内容も一緒に保存されます"
+
+#: source/Editor/panels/project_panel.cpp
+msgid ""
+"Show in the airport editor\n"
+"Right-click to remove it from the project"
+msgstr ""
+"空港エディターで表示\n"
+"右クリックでプロジェクトから削除"
+
+#: source/Editor/panels/project_panel.cpp
+msgid ""
+"Shown in the airport editor (AIRPORTS > Airport)\n"
+"Right-click to remove it from the project"
+msgstr ""
+"空港エディターに表示中（空港 > 空港）\n"
+"右クリックでプロジェクトから削除"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "The X-Plane version the scenery targets (\"12.1.4-r3\")"
+msgstr "シーナリーの対象 X-Plane バージョン (\"12.1.4-r3\")"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "The project's reference point (WGS84). Unset: the first airport's datum is used"
+msgstr "プロジェクトの基準点 (WGS84)。未設定の場合は最初の空港の基準点を使用します"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "The scenery pack folder name the project exports to"
+msgstr "プロジェクトのエクスポート先シーナリーパックのフォルダー名"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "This file isn't in the project folder"
+msgstr "このファイルはプロジェクトフォルダー内にありません"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Animate"
+msgstr "アニメーション再生"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/properties_panel.cpp
+msgid "COMPONENTS"
+msgstr "コンポーネント"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Custom objects"
+msgstr "カスタムオブジェクト"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Delete"
+msgstr "削除"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Edges"
+msgstr "エッジ"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Elements"
+msgstr "要素"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "End 1"
+msgstr "端 1"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "End 2"
+msgstr "端 2"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/properties_panel.cpp
+#: source/Editor/panels/settings_panels.cpp
+msgid "GENERAL PROPERTIES"
+msgstr "一般プロパティ"
+
+#: source/Editor/panels/properties_panel.cpp
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Geometry"
+msgstr "ジオメトリ"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "In view"
+msgstr "ビュー内"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "LOD"
+msgstr "LOD"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Layer"
+msgstr "レイヤー"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Library or scenery pack art that couldn't be found or read; the log names each one"
+msgstr "見つからない、または読み込めなかったライブラリやシーナリーパックのアート。個々の名前はログに記録されます"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Library path"
+msgstr "ライブラリパス"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Library path of a replacement vehicle (row 1402), empty for the default"
+msgstr "代替車両のライブラリパス（行 1402）。空欄で既定"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Lights"
+msgstr "ライト"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Move the camera to look at it"
+msgstr "カメラを移動してこれを表示"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Move the camera to look at the object"
+msgstr "カメラを移動してオブジェクトを表示"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Named lights come from X-Plane's lights.txt; they show at night or with \"Force lights on\""
+msgstr "名前付きライトは X-Plane の lights.txt から読み込まれます。夜間または「Force lights on」で表示されます"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "No properties found"
+msgstr "プロパティがありません"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Note"
+msgstr "メモ"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Off freezes the animation groups in their current pose"
+msgstr "オフにするとアニメーショングループを現在のポーズで停止します"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Outline"
+msgstr "輪郭"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/properties_panel.cpp
+msgid "PROPERTIES"
+msgstr "プロパティ"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Pipe separated: baggage_loader|fuel_jets|food|pushback ..."
+msgstr "パイプ区切り：baggage_loader|fuel_jets|food|pushback ..."
+
+#: source/Editor/panels/properties_panel.cpp
+#: source/Editor/panels/settings_panels.cpp
+msgid "Position"
+msgstr "位置"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Remove this row from the airport"
+msgstr "この行を空港から削除"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Rings"
+msgstr "リング"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Rotation"
+msgstr "回転"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Scale"
+msgstr "スケール"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Scene"
+msgstr "シーン"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Scenery pack"
+msgstr "シーナリーパック"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Shows"
+msgstr "表示対象"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Space separated ICAO airline codes (asa dlh ...)"
+msgstr "スペース区切りの ICAO 航空会社コード (asa dlh ...)"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Surface code, or surface + 100 x shoulder width in meters"
+msgstr "路面コード、または 路面 + 100 x 路肩幅（メートル）"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/properties_panel.cpp
+msgid "TRANSFORM"
+msgstr "トランスフォーム"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Visible"
+msgstr "表示"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/properties_panel.cpp
+msgid "X-PLANE OBJECT"
+msgstr "X-Plane オブジェクト"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "X-Plane sign syntax, e.g. {@Y}A{@L}22{^r}"
+msgstr "X-Plane の標識構文。例：{@Y}A{@L}22{^r}"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"B-spline (Shift+B)\n"
+"Edit the selected chains through a control polygon: the curve stays smooth (C2)\n"
+"and only changes near the points that move. Nodes become the control points"
+msgstr ""
+"B スプライン (Shift+B)\n"
+"制御ポリゴンで選択したチェーンを編集：曲線は滑らか (C2) なまま、\n"
+"動かした点の近くだけが変わります。ノードが制御点になります"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"B-spline (Shift+B)\n"
+"Editing the control polygon: click to go back to nodes and handles"
+msgstr ""
+"B スプライン (Shift+B)\n"
+"制御ポリゴンを編集中：クリックでノードとハンドルに戻ります"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Close the line (lines and strings)\n"
+"Or Ctrl+click its other end with one end selected"
+msgstr ""
+"ラインを閉じる（ラインとストリング）\n"
+"または片端を選択した状態でもう一方の端を Ctrl+クリック"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid "Delete the selected nodes (Del)"
+msgstr "選択したノードを削除 (Del)"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Fly navigation\n"
+"RMB look, hold RMB + WASD move, Q/E down/up; the wheel moves the camera"
+msgstr ""
+"フライナビゲーション\n"
+"右ボタンで見回し、右ボタン + WASD で移動、Q/E で下降/上昇。ホイールでカメラを移動"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Gizmo: local axes (X)\n"
+"Click for world axes"
+msgstr ""
+"ギズモ：ローカル軸 (X)\n"
+"クリックでワールド軸"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Gizmo: world axes (X)\n"
+"Click for the active object's axes"
+msgstr ""
+"ギズモ：ワールド軸 (X)\n"
+"クリックでアクティブなオブジェクトの軸"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid "Open the line at its selected node (or its first)"
+msgstr "選択したノード（または最初のノード）でラインを開く"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Orthographic projection (Numpad 5)\n"
+"Click for perspective"
+msgstr ""
+"平行投影 (Numpad 5)\n"
+"クリックで透視投影"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Perspective projection (Numpad 5)\n"
+"Click for orthographic"
+msgstr ""
+"透視投影 (Numpad 5)\n"
+"クリックで平行投影"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Pivot: the active object\n"
+"Click to turn and scale about the selection's center"
+msgstr ""
+"ピボット：アクティブなオブジェクト\n"
+"クリックで選択範囲の中心を軸に回転・拡大縮小"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Pivot: the selection's center\n"
+"Click to turn and scale about the active object"
+msgstr ""
+"ピボット：選択範囲の中心\n"
+"クリックでアクティブなオブジェクトを軸に回転・拡大縮小"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Reference image\n"
+"Compare the view with an X-Plane 12 screenshot: split, difference or flicker"
+msgstr ""
+"参照画像\n"
+"ビューを X-Plane 12 のスクリーンショットと比較します：分割、差分、フリッカー"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid "Reset camera to the startup view"
+msgstr "カメラを起動時のビューにリセット"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Reverse the direction of the selected shapes (or of the selected nodes' chains)\n"
+"Facades face, strings and lines run by their direction"
+msgstr ""
+"選択した形状（または選択ノードのチェーン）の方向を反転\n"
+"ファサードの向きや、ストリング・ラインの伸びる向きは方向で決まります"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Snapping (hold Ctrl while dragging to invert)\n"
+"Right-click: snap steps"
+msgstr ""
+"スナップ（ドラッグ中に Ctrl を押すと反転）\n"
+"右クリック：スナップ間隔"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Straighten (Shift+L)\n"
+"Make the segments between selected nodes straight"
+msgstr ""
+"直線化 (Shift+L)\n"
+"選択したノード間のセグメントを直線にします"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/scene_viewport.cpp
+msgid "VIEWPORT"
+msgstr "ビューポート"
+
+#: source/Editor/panels/second_viewport_panel.cpp
+msgid "Frame the airport (Home)"
+msgstr "空港をフレーム表示 (Home)"
+
+#: source/Editor/panels/second_viewport_panel.cpp
+msgid "Match the main viewport's camera"
+msgstr "メインビューポートのカメラに合わせる"
+
+#: source/Editor/panels/second_viewport_panel.cpp
+msgid ""
+"Orthographic\n"
+"Click for perspective (Numpad 5)"
+msgstr ""
+"平行投影\n"
+"クリックで透視投影 (Numpad 5)"
+
+#: source/Editor/panels/second_viewport_panel.cpp
+msgid ""
+"Perspective\n"
+"Click for orthographic (Numpad 5)"
+msgstr ""
+"透視投影\n"
+"クリックで平行投影 (Numpad 5)"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/second_viewport_panel.cpp
+msgid "VIEWPORT 2"
+msgstr "ビューポート 2"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "1 logarithmic .. 0 uniform cascade splits (shadow/csm/lambda)"
+msgstr "カスケード分割：1 で対数、0 で均等 (shadow/csm/lambda)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "1: the blur never crosses depth or normal edges (ssao/sharpness)"
+msgstr "1：ブラーが深度や法線のエッジを越えません (ssao/sharpness)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "3 x 3 filtered shadow-map lookups (shadow/want_soft)"
+msgstr "3 x 3 フィルター付きシャドウマップ参照 (shadow/want_soft)"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "AMBIENT OCCLUSION"
+msgstr "アンビエントオクルージョン"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "ATMOSPHERE"
+msgstr "大気"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Above 1 keeps mesh LODs at higher detail for longer"
+msgstr "1 を超えると、メッシュの LOD を遠くまで高詳細に保ちます"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Adaptation"
+msgstr "順応"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Added to the history mip a reflection reads (ssr/lod_bias)"
+msgstr "反射が読み取る履歴ミップに加算されます (ssr/lod_bias)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Aerial range"
+msgstr "空気遠近の範囲"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Airglow"
+msgstr "大気光"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "All off: the frame graph with every switchable pass off (A/B against the plain renderer)"
+msgstr "すべてオフ：切り替え可能なパスをすべてオフにしたフレームグラフ（素のレンダラーとの A/B 比較用）"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Aperture (f)"
+msgstr "絞り (f)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Bloom"
+msgstr "ブルーム"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Blur passes"
+msgstr "ブラーのパス数"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Blur rough"
+msgstr "粗面のブラー"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "CACAO is X-Plane 12's ambient occlusion; GTAO is SEDX's older pass, for comparison"
+msgstr "CACAO は X-Plane 12 のアンビエントオクルージョン、GTAO は比較用の SEDX の旧パスです"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "CAMERA"
+msgstr "カメラ"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Calm ponds"
+msgstr "穏やかな池"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Casters pushed away from the light by this many times their depth slope (shadow/bias_slope, or sedx/csm_receiver_plane_slope_bias with the receiver plane)"
+msgstr "キャスターを深度勾配のこの倍数だけ光源から遠ざけます（shadow/bias_slope、レシーバー平面使用時は sedx/csm_receiver_plane_slope_bias）"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Choppiness"
+msgstr "波の荒さ"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Cloud shadows"
+msgstr "雲の影"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Compensation"
+msgstr "露出補正"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Cull below"
+msgstr "カリング閾値"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Culls, picks LODs and instances the scenery on the GPU. Off: one CPU draw call per object"
+msgstr "シーナリーのカリング、LOD 選択、インスタンス化を GPU で行います。オフ：オブジェクトごとに CPU から 1 回の描画呼び出し"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "DEBUG VIEW"
+msgstr "デバッグ表示"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Debug: every surface traces as a mirror (see the Reflections debug view); the lighting takes them too"
+msgstr "デバッグ：すべての表面を鏡としてトレースします（反射のデバッグ表示を参照）。ライティングにも反映されます"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Detail"
+msgstr "ディテール"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Distance"
+msgstr "距離"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "EXPOSURE"
+msgstr "露出"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Exposure fusion: how far the shadows exposure is lifted (exposure_fusion/shadows)"
+msgstr "露出フュージョン：シャドウ部の露出を持ち上げる量 (exposure_fusion/shadows)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Extra occlusion from the neighbouring pixels (ssao/detail_shadow_strength)"
+msgstr "隣接ピクセルからの追加オクルージョン (ssao/detail_shadow_strength)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "F0"
+msgstr "F0"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "FRAME"
+msgstr "フレーム"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "FSR sharpness"
+msgstr "FSR シャープネス"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "FXAA"
+msgstr "FXAA"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Fade in"
+msgstr "フェードイン"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Fade out"
+msgstr "フェードアウト"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Field of view"
+msgstr "視野角"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Foam"
+msgstr "泡"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Follow height"
+msgstr "高さに追従"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Frustum culling"
+msgstr "視錐台カリング"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Fusion highlights"
+msgstr "フュージョン（ハイライト）"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Fusion shadows"
+msgstr "フュージョン（シャドウ）"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Fusion strength"
+msgstr "フュージョン強度"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "GPU MEMORY"
+msgstr "GPU メモリ"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "GPU SCENE"
+msgstr "GPU シーン"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "GPU TIMINGS"
+msgstr "GPU タイミング"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "GPU-driven"
+msgstr "GPU 駆動"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Gamut compression"
+msgstr "色域圧縮"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Gloss"
+msgstr "光沢"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Gloss fade"
+msgstr "光沢フェード"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Gloss over which reflections fade in above the minimum (sedx/ssr_gloss_fade)"
+msgstr "最小値を超えてから反射がフェードインする光沢の幅 (sedx/ssr_gloss_fade)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Glossy lobes read blurred mips of the previous frame (ssr/use_prefiltered); off: every reflection is sharp"
+msgstr "光沢ローブは前フレームのぼかしたミップを読み取ります (ssr/use_prefiltered)。オフ：すべての反射がシャープになります"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Haze fade band"
+msgstr "もやのフェード帯"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Haze layer top"
+msgstr "もや層の上端"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Heading / pitch"
+msgstr "方位 / ピッチ"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Hierarchical-Z iterations before a ray gives up (sedx/ssr_max_steps)"
+msgstr "レイが打ち切られるまでの階層 Z の反復回数 (sedx/ssr_max_steps)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Horizon angle"
+msgstr "地平角"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Horizontal displacement that sharpens the crests (water/h_displace_lambda)"
+msgstr "波頭を鋭くする水平方向の変位 (water/h_displace_lambda)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "How far the aerial perspective volume reaches"
+msgstr "空気遠近ボリュームの到達距離"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "How far the display curve's working space is pulled toward grey (color_management/compression)"
+msgstr "表示カーブの作業空間をグレーへ引き寄せる度合い (color_management/compression)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "ISO"
+msgstr "ISO"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Jump straight to the metered exposure"
+msgstr "測光した露出に即座に切り替えます"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "LENS"
+msgstr "レンズ"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "LOD bias"
+msgstr "LOD バイアス"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "LOD scale"
+msgstr "LOD スケール"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Limits self-occlusion on slopes and coarse geometry (ssao/horizon_angle_threshold)"
+msgstr "斜面や粗いジオメトリでの自己遮蔽を抑えます (ssao/horizon_angle_threshold)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Manual EV100"
+msgstr "手動 EV100"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Max steps"
+msgstr "最大ステップ数"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Minimum gloss"
+msgstr "最小光沢"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Mode"
+msgstr "モード"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "NAVIGATION"
+msgstr "ナビゲーション"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "No occlusion nearer the camera than the first distance, all of it from the second (ssao/fade_in_from, fade_in_to)"
+msgstr "1 つ目の距離よりカメラに近い部分はオクルージョンなし、2 つ目の距離からは完全に適用 (ssao/fade_in_from, fade_in_to)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "No scene camera"
+msgstr "シーンカメラがありません"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Normal offset"
+msgstr "法線オフセット"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "OUTPUT"
+msgstr "出力"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Objects whose bounding sphere covers fewer pixels than this are not drawn"
+msgstr "バウンディング球がこのピクセル数より小さいオブジェクトは描画しません"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Occlusion culling"
+msgstr "オクルージョンカリング"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "On top of the automatic exposure; positive brightens"
+msgstr "自動露出に加算されます。正の値で明るくなります"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Orbit center"
+msgstr "オービット中心"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Orthographic views show twice this distance times tan(vertical fov / 2) from bottom to top"
+msgstr "平行投影ビューでは、下端から上端までにこの距離 × 2 × tan(垂直視野角 / 2) が表示されます"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Passes"
+msgstr "パス数"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Power"
+msgstr "パワー"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Preset"
+msgstr "プリセット"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Probe LOD bias"
+msgstr "プローブの LOD バイアス"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Projection"
+msgstr "投影"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "QUALITY"
+msgstr "品質"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "REFLECTIONS"
+msgstr "反射"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "RENDERER"
+msgstr "レンダラー"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Radius"
+msgstr "半径"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Radius and fade-in grow with the camera's height above the ground, as X-Plane's do (ssao/dynamic_values)"
+msgstr "X-Plane と同様に、半径とフェードインが地面からのカメラの高さに応じて大きくなります (ssao/dynamic_values)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Receiver plane"
+msgstr "レシーバー平面"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Receivers moved along their normal before the lookup (shadow/bias_n_constant; X-Plane uses 0)"
+msgstr "参照前にレシーバーを法線方向に移動する量（shadow/bias_n_constant。X-Plane は 0 を使用）"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Reflectance looking straight down (water/F0)"
+msgstr "真下を見たときの反射率 (water/F0)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Reflections' blur: added to roughness x 5 when the probes are sampled"
+msgstr "反射のぼかし：プローブをサンプリングするときに 粗さ x 5 に加算されます"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "SCENE SETTINGS"
+msgstr "シーン設定"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "SHADOWS"
+msgstr "シャドウ"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Saturation"
+msgstr "彩度"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Saturation after the display curve (color_management/sdr/saturation)"
+msgstr "表示カーブ適用後の彩度 (color_management/sdr/saturation)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Sea floor"
+msgstr "海底"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Share of the sea floor seen through clear water (water/sea_floor_coef; 0 in X-Plane 12.4.4)"
+msgstr "澄んだ水を通して見える海底の割合（water/sea_floor_coef。X-Plane 12.4.4 では 0）"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Share of the sunlight clouds can take away (clouds/cloud_shadow_lighten_ratio)"
+msgstr "雲が遮ることのできる日光の割合 (clouds/cloud_shadow_lighten_ratio)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Sharpness"
+msgstr "シャープネス"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Show"
+msgstr "表示"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Shutter (s)"
+msgstr "シャッター (s)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Size of the occlusion sphere near the ground (ssao/radius)"
+msgstr "地面付近のオクルージョン球の大きさ (ssao/radius)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Skips objects hidden behind nearer ones (two-phase Hi-Z test against this frame's depth)"
+msgstr "手前のオブジェクトに隠れたオブジェクトを省きます（このフレームの深度に対する 2 段階の Hi-Z テスト）"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Slope bias"
+msgstr "勾配バイアス"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Soft edges"
+msgstr "ソフトエッジ"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Soft lookups compare against the receiver's own plane, so thin gaps keep their shadow (sedx/csm_receiver_plane); off: X-Plane's caster bias alone"
+msgstr "ソフト参照をレシーバー自身の平面と比較するため、細い隙間にも影が残ります (sedx/csm_receiver_plane)。オフ：X-Plane のキャスターバイアスのみ"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Split lambda"
+msgstr "分割ラムダ"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Stars"
+msgstr "星"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Strength"
+msgstr "強度"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Technique"
+msgstr "手法"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "The DSF's fetch ratio scales the waves: lakes and ponds stay calm (sedx/water_use_fetch)"
+msgstr "DSF のフェッチ比で波を調整します：湖や池は穏やかなままです (sedx/water_use_fetch)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "The night sky's floor: airglow and unresolved starlight"
+msgstr "夜空の最低輝度：大気光と分解されない星の光"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "The surface haze layer's top above the ground (at least; very clear air mixes higher)"
+msgstr "地表のもや層の地面からの上端（最低値。非常に澄んだ空気ではより高くまで混ざります）"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "The surface's own gloss before the waves roughen it (water/gloss)"
+msgstr "波で粗くなる前の水面自体の光沢 (water/gloss)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Thickness"
+msgstr "厚さ"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Time of day"
+msgstr "時刻"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Tone curve"
+msgstr "トーンカーブ"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Trace everything"
+msgstr "すべてをトレース"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Turbidity"
+msgstr "濁度"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "USER INTERFACE"
+msgstr "ユーザーインターフェイス"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "View"
+msgstr "ビュー"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "WATER"
+msgstr "水"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Waves break where their surface folds tighter than this (water/foam_bias): higher, more foam"
+msgstr "水面がこれより強く折り重なる所で波が砕けます (water/foam_bias)。大きいほど泡が増えます"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "What stands in the water fades over turbidity / (1 - the water map's alpha) meters (water/turbidity)"
+msgstr "水中にあるものは 濁度 / (1 - 水マップのアルファ) メートルでフェードします (water/turbidity)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Wind (m/s)"
+msgstr "風 (m/s)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "X-Plane 12's defaults for desktop Vulkan (vkmtl_async): what the parity references use"
+msgstr "デスクトップ Vulkan 向けの X-Plane 12 の既定値 (vkmtl_async)：比較用リファレンスで使用"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "X-Plane 12: its display transform and grade (the parity look); the others are ungraded, for comparison"
+msgstr "X-Plane 12：その表示変換とグレーディング（比較用の見た目）。その他はグレーディングなしの比較用です"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "XP12 EMULATION"
+msgstr "XP12 エミュレーション"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "ssao/blur_pass_count"
+msgstr "ssao/blur_pass_count"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "ssao/fade_out_from, fade_out_to"
+msgstr "ssao/fade_out_from, fade_out_to"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "ssao/shadow_multiplier"
+msgstr "ssao/shadow_multiplier"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "ssao/shadow_power"
+msgstr "ssao/shadow_power"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Also list scenery packages without a library.txt"
+msgstr "library.txt のないシーナリーパッケージも表示します"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Animation"
+msgstr "アニメーション"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid ""
+"Arm the facade tool with it (B): draw a polygon, rectangle, circle or line in the viewport.\n"
+"Or drag it onto the ground for a default footprint"
+msgstr ""
+"これをファサードツール (B) にセットします：ビューポートでポリゴン、矩形、円、ラインを描きます。\n"
+"または地面にドラッグすると既定のフットプリントになります"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Browse..."
+msgstr "参照..."
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Clear all filters"
+msgstr "すべてのフィルターをクリア"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Click to apply. Right-click to rename, update or delete"
+msgstr "クリックで適用。右クリックで名前の変更、更新、削除"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Close every library"
+msgstr "すべてのライブラリを折りたたむ"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Copy path"
+msgstr "パスをコピー"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Copy the virtual path (for DSF / WED placements)"
+msgstr "仮想パスをコピーします（DSF / WED の配置用）"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Detect"
+msgstr "検出"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Find X-Plane 11 and 12 installs: X-Plane's own install lists, Steam libraries, the registry and the usual folders"
+msgstr "X-Plane 11 と 12 のインストールを検索します：X-Plane 自身のインストール一覧、Steam ライブラリ、レジストリ、一般的なフォルダー"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Floors, walls and their rules, spellings and segments in the FACADES inspector"
+msgstr "「ファサード」インスペクターでフロア、壁とそのルール、スペリング、セグメントを表示"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid ""
+"Grouped by library\n"
+"Click for one list"
+msgstr ""
+"ライブラリ別にグループ化\n"
+"クリックで単一の一覧"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "LODs"
+msgstr "LOD"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid ""
+"List with thumbnails\n"
+"Click for the thumbnail grid"
+msgstr ""
+"サムネイル付き一覧\n"
+"クリックでサムネイルグリッド"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Lit texture"
+msgstr "LIT テクスチャ"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "No assets."
+msgstr "アセットがありません。"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "No library assets yet (scanning, or no tracked libraries)."
+msgstr "ライブラリアセットはまだありません（スキャン中か、登録されたライブラリがありません）。"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Normal map"
+msgstr "法線マップ"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Nothing matches the search and filters."
+msgstr "検索とフィルターに一致するものはありません。"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid ""
+"One list\n"
+"Click to group by library"
+msgstr ""
+"単一の一覧\n"
+"クリックでライブラリ別にグループ化"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Only objects (.obj) and facades (.fac) can be placed for now"
+msgstr "現在配置できるのはオブジェクト (.obj) とファサード (.fac) のみです"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Open every library"
+msgstr "すべてのライブラリを展開"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Other"
+msgstr "その他"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Place in scene"
+msgstr "シーンに配置"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Places the object right away; it appears when it has loaded in the background"
+msgstr "オブジェクトをすぐに配置します。バックグラウンドで読み込みが終わると表示されます"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Saved with the project (.edX / .sex), so everyone working on it gets the same filters"
+msgstr "プロジェクト (.edX / .sex) と一緒に保存されるため、共同作業者全員が同じフィルターを使えます"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Search virtual paths: words narrow it down, -word leaves out (\"hangar -small\")"
+msgstr "仮想パスを検索：語で絞り込み、-語 で除外 (\"hangar -small\")"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid ""
+"Select an asset to see where it comes from.\n"
+"Double-click or drag an object into the viewport to place it.\n"
+"Double-click a facade to draw with it, or drag it onto the ground."
+msgstr ""
+"アセットを選択すると入手元が表示されます。\n"
+"オブジェクトはダブルクリックまたはビューポートへのドラッグで配置します。\n"
+"ファサードはダブルクリックで描画するか、地面にドラッグします。"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Set the X-Plane folder above to browse its libraries."
+msgstr "上で X-Plane フォルダーを設定すると、そのライブラリを参照できます。"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Show file"
+msgstr "ファイルを表示"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Texture"
+msgstr "テクスチャ"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid ""
+"Thumbnail grid\n"
+"Click for the list (Ctrl + wheel sizes the tiles)"
+msgstr ""
+"サムネイルグリッド\n"
+"クリックで一覧（Ctrl + ホイールでタイルのサイズを変更）"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Track a library folder outside X-Plane (for example a library you are building)"
+msgstr "X-Plane の外にあるライブラリフォルダーを登録します（作成中のライブラリなど）"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Track folder..."
+msgstr "フォルダーを登録..."
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Update"
+msgstr "更新"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Verify that every exported file exists (flags broken libraries; slower scans)"
+msgstr "エクスポートされたすべてのファイルの存在を確認します（壊れたライブラリを検出。スキャンが遅くなります）"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Warnings"
+msgstr "警告"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "X-PLANE LIBRARY"
+msgstr "X-Plane ライブラリ"
+
+#. names in Dear ImGui's window list (Ctrl+Tab)
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "(Main menu bar)"
+msgstr "(メインメニューバー)"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "(Popup)"
+msgstr "(ポップアップ)"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "(Untitled)"
+msgstr "(無題)"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Click and drag to move or undock whole node."
+msgstr "クリックしてドラッグすると、ノード全体を移動またはドッキング解除します。"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Copy Link"
+msgstr "リンクをコピー"
+
+#. Dear ImGui's docking tab menu and hints
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Hide tab bar"
+msgstr "タブバーを隠す"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Hold SHIFT to enable Docking window."
+msgstr "SHIFT を押しながらでウィンドウをドッキングできます。"
+
+#. %s is a web address
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Open '%s'"
+msgstr "「%s」を開く"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Reset"
+msgstr "リセット"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Reset order"
+msgstr "順序をリセット"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Reset visibility"
+msgstr "表示をリセット"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Size all columns to default"
+msgstr "すべての列を既定のサイズにする"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Size all columns to fit"
+msgstr "すべての列を内容に合わせる"
+
+#. Dear ImGui's table header context menu
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Size column to fit"
+msgstr "列を内容に合わせる"

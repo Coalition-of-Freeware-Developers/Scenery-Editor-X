@@ -135,6 +135,15 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   case-insensitive lookups, unparsable files left alone and backed up, byte order marks, missing / read-only mounts,
   UTF-8 physical paths. Standard library plus libconfig compiled from `dependency/libconfig`.
 
+- **`I18nTests`** (`source/Tests/i18n_tests`) — the translation core (`SceneryEditorX/i18n/*`): `Msg` keys hashed at
+  compile time, the gettext PO parser (escapes, plurals, CRLF / BOM, errors with line numbers), plural rules checked
+  against CLDR for every language of the table, BCP-47 language matching (Chinese by script), the `std::format`-style
+  formatter (no exceptions, no libc++ availability limits), the pseudo-locale, the translation service (fallbacks,
+  translator overrides, missing-string log, lookups while another thread switches languages) and `Text`.
+  `MacroCollisionTests.cpp` includes the headers after X11's and Windows' macros; `FontCoverageTests.cpp` checks the
+  font character-map reader that picks CJK fonts (it also reads `resources/fonts` when run from the repository root).
+  Standard library only, fully green.
+
 The other suites are **not** Linux-buildable as written: `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
 SDK; `VulkanSmokeTests` (opt-in via `SEDX_ENABLE_VULKAN_SMOKE_TESTS`) needs the full engine.
 
@@ -278,6 +287,11 @@ g++ -std=c++20 -O2 -pthread -DLIBCONFIG_STATIC -DLIBCONFIGXX_STATIC $INCS -I$LC 
     source/SceneryEditorX/filesystem/vfs.cpp $LC/libconfigcpp.cc build_linux_tests/libconfig/*.o $LIBS \
     -o build_linux_tests/SettingsTest
 ./build_linux_tests/SettingsTest
+
+# 8. I18nTests (fully green)
+g++ -std=c++20 -O2 -pthread -Wall -Wextra $INCS source/Tests/i18n_tests/*.cpp source/SceneryEditorX/i18n/*.cpp $LIBS \
+    -o build_linux_tests/I18nTests
+./build_linux_tests/I18nTests
 ```
 
 MinGW (MSYS2) has no `fsync`, which libconfig's `wincompat.h` maps its `posix_fsync` to there: on that toolchain drop the
@@ -335,6 +349,8 @@ install CMake + Vulkan SDK, set `VULKAN_SDK`/`XPLANE_12_SDK`, and use the `windo
 | `claude-pr.yml` | pull request opened / updated | Claude reviews the diff for bugs and single-platform code. |
 | `validate-github-forms.yml` | changes under `.github/` | `python .github/scripts/validate_github_forms.py` (forms, labels, triage map; a tab in a form breaks it on GitHub) and actionlint. |
 | `sync-labels.yml` | `labels.json` changes, or run by hand | Creates and recolours labels; never deletes. |
+| `unit-tests.yml` | pull requests into `dev`, pushes to `dev` / `master` | The standard-library Catch2 suites on Linux, macOS and Windows (`scripts/ci/build_unit_tests.sh`). |
+| `localization.yml` | pull requests into `dev` touching `source/`, `resources/locale/`, `tools/i18n/` | Tests `tools/i18n` on the three platforms; extracts the strings, updates the catalogs, lists added / removed text in the run summary, runs `check` and `lint`, and commits the refreshed `resources/locale` files to the pull request's branch (pull before pushing again). |
 
 Issue and comment events run the workflow files on the **default branch (`master`)**, and GitHub shows the issue forms
 from `master` too: changes to them take effect once they reach `master`.
@@ -349,5 +365,14 @@ from `master` too: changes to them take effect once they reach `master`.
   version on any branch (`git fetch` then `git show origin/<branch>:source/resource.h`) + 1, since parallel branches race
   for numbers. Changes to `.github/`, docs or tests alone don't bump it.
 - Keep code std-only, or behind per-OS branches implemented for Windows, Linux and macOS.
+- **Mark user-facing text for translation** (`docs/localization-system-documentation.md`): `TrL("...")` for ImGui labels
+  that are IDs (windows, menus, buttons, checkboxes, tabs, tree nodes), `Tr("...")` for display text, `TrF` / `TrNF` for
+  text with values (`std::format` fields, never `+` concatenation or `n == 1 ? "" : "s"`), `Ctx("context", "...")` for
+  short ambiguous words, `TrNoop` in tables. The `EditorUI` helpers and any function with a `Text` parameter translate
+  literals by themselves. Logs, file contents, settings keys and user data stay untranslated. Put a
+  `// TRANSLATORS:` comment above anything unclear. `python -I tools/i18n/sedx_i18n.py lint` fails on new untranslated
+  ImGui literals; the localization workflow refreshes `resources/locale/sedx.pot` on the pull request (or run
+  `python -I tools/i18n/sedx_i18n.py extract` and `update` yourself). Never change the process locale (`setlocale`
+  beyond `LC_TIME`): the file writers depend on `.` decimals.
 - Add or extend a Catch2 case in the suite that covers the code (above), and say in the pull request what you couldn't
   run (the editor needs a GPU; Windows-only paths need a Windows host).

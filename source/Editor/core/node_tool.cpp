@@ -1434,8 +1434,7 @@ namespace SceneryEditorX::NodeTool
 				if (ImGui::InputInt("##RoadType", &subtype, 1, 10, ImGuiInputTextFlags_EnterReturnsTrue) && subtype >= 0 && subtype <= 255 && subtype != item.roadSubtype)
 					EditItem(item.id, "Change road type", [subtype](ProjectFile::SceneryItem &road) { road.roadSubtype = subtype; });
 			}
-			EditorUI::ItemTooltip(network ? "The network's road types (its virtual types): the DSF subtype X-Plane draws the road with"
-										  : "DSF road subtype 0..255 (the network couldn't be read for names)");
+			EditorUI::ItemTooltip(network ? Text("The network's road types (its virtual types): the DSF subtype X-Plane draws the road with") : Text("DSF road subtype 0..255 (the network couldn't be read for names)"));
 
 			EditorUI::PropertyLabel("Levels");
 			int levels[2] = { item.startLayer, item.endLayer };
@@ -1743,7 +1742,7 @@ namespace SceneryEditorX::NodeTool
 				const Node node = chain.nodes[focus.ref.node];
 				for (const bool outgoing : { false, true })
 				{
-					EditorUI::PropertyLabel(outgoing ? "Out handle" : "In handle");
+					EditorUI::PropertyLabel(outgoing ? Text("Out handle") : Text("In handle"));
 					ImGui::PushID(outgoing ? "Out" : "In");
 					if (!(outgoing ? node.hasOut : node.hasIn))
 					{
@@ -1874,7 +1873,7 @@ namespace SceneryEditorX::NodeTool
 			bool value = closed;
 			if (ImGui::Checkbox("##Closed", &value))
 				ToggleClosed();
-			EditorUI::ItemTooltip(closed ? "Open the line at its selected node (or its first one)" : "Close the line with a segment back to its first node");
+			EditorUI::ItemTooltip(closed ? Text("Open the line at its selected node (or its first one)") : Text("Close the line with a segment back to its first node"));
 		}
 		EditorUI::EndPropertyGrid();
 	}

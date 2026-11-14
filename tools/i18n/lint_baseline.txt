@@ -1,0 +1,391 @@
+# Dear ImGui calls with English literals not converted yet (tools/i18n/sedx_i18n.py lint).
+# Convert them with Tr / TrL (source/SceneryEditorX/i18n/tr.h) and run lint --update-baseline:
+# the list only shrinks. path<TAB>text
+source/Editor/core/editor_airports.cpp	%s has unsaved changes.
+source/Editor/core/editor_airports.cpp	Cancel
+source/Editor/core/editor_airports.cpp	Don't save
+source/Editor/core/editor_airports.cpp	It came from %s, so saving writes a copy into a scenery pack of yours.
+source/Editor/core/editor_airports.cpp	Save
+source/Editor/core/editor_layer.cpp	About Scenery Editor X
+source/Editor/core/editor_layer.cpp	Add Empty Entity
+source/Editor/core/editor_layer.cpp	Back
+source/Editor/core/editor_layer.cpp	Bottom
+source/Editor/core/editor_layer.cpp	Close
+source/Editor/core/editor_layer.cpp	Coalition of Freeware Developers. MIT licensed.
+source/Editor/core/editor_layer.cpp	Dear ImGui
+source/Editor/core/editor_layer.cpp	Dear ImGui %s (docking)
+source/Editor/core/editor_layer.cpp	Dear ImGui Style Editor
+source/Editor/core/editor_layer.cpp	Delete
+source/Editor/core/editor_layer.cpp	Demo Window
+source/Editor/core/editor_layer.cpp	Deselect
+source/Editor/core/editor_layer.cpp	Fly Navigation
+source/Editor/core/editor_layer.cpp	Frame All
+source/Editor/core/editor_layer.cpp	Frame Selection
+source/Editor/core/editor_layer.cpp	Front
+source/Editor/core/editor_layer.cpp	Left
+source/Editor/core/editor_layer.cpp	Metrics / Debugger
+source/Editor/core/editor_layer.cpp	Orbit Navigation
+source/Editor/core/editor_layer.cpp	Orthographic
+source/Editor/core/editor_layer.cpp	Perspective
+source/Editor/core/editor_layer.cpp	Ready
+source/Editor/core/editor_layer.cpp	Reset Camera
+source/Editor/core/editor_layer.cpp	Right
+source/Editor/core/editor_layer.cpp	Save Airport As...
+source/Editor/core/editor_layer.cpp	Scenery Editor X
+source/Editor/core/editor_layer.cpp	Scenery authoring for X-Plane 12.
+source/Editor/core/editor_layer.cpp	Selected facades
+source/Editor/core/editor_layer.cpp	Style Editor
+source/Editor/core/editor_layer.cpp	Top
+source/Editor/core/editor_layer.cpp	Version %s (%s, Vulkan)
+source/Editor/core/editor_project.cpp	%s has unsaved changes.
+source/Editor/core/editor_project.cpp	Airports (apt.dat)...
+source/Editor/core/editor_project.cpp	Airports (apt.dat)...
+source/Editor/core/editor_project.cpp	Binary Copy (.sex)...
+source/Editor/core/editor_project.cpp	Cancel
+source/Editor/core/editor_project.cpp	Decide later
+source/Editor/core/editor_project.cpp	Discard
+source/Editor/core/editor_project.cpp	Don't save
+source/Editor/core/editor_project.cpp	Exit
+source/Editor/core/editor_project.cpp	Export
+source/Editor/core/editor_project.cpp	Export Again
+source/Editor/core/editor_project.cpp	Import
+source/Editor/core/editor_project.cpp	Library (library.txt)...
+source/Editor/core/editor_project.cpp	Library (library.txt)...
+source/Editor/core/editor_project.cpp	Open Recent
+source/Editor/core/editor_project.cpp	Restore
+source/Editor/core/editor_project.cpp	Restoring replaces what's open with them; nothing is written until you save.
+source/Editor/core/editor_project.cpp	Save
+source/Editor/core/editor_project.cpp	Save Project As...
+source/Editor/core/editor_project.cpp	The project file changed after they were made (another save, a git checkout...).
+source/Editor/core/editor_project.cpp	Unsaved changes to %s from %s were found.
+source/Editor/core/editor_project.cpp	WorldEditor Project (earth.wed.xml)...
+source/Editor/core/editor_project.cpp	WorldEditor Project (earth.wed.xml)...
+source/Editor/core/editor_project.cpp	X-Plane Scenery Pack...
+source/Editor/core/editor_ui.cpp	label
+source/Editor/core/editor_ui.cpp	value
+source/Editor/core/editor_welcome.cpp	Action
+source/Editor/core/editor_welcome.cpp	Controls
+source/Editor/core/editor_welcome.cpp	How should the viewport camera follow your mouse? Pick the 3D package your hands already know.
+source/Editor/core/editor_welcome.cpp	Mouse / keys
+source/Editor/core/editor_welcome.cpp	Numpad views work in all of them: 7 top, 1 front, 3 side, 5 orthographic, . frames the selection. Change this any time in Edit > Preferences.
+source/Editor/core/editor_xplane.cpp	Changes here move this object only.
+source/Editor/core/editor_xplane.cpp	Dataref
+source/Editor/core/editor_xplane.cpp	Driver
+source/Editor/core/editor_xplane.cpp	Force lights on
+source/Editor/core/editor_xplane.cpp	Objects loading in the background
+source/Editor/core/editor_xplane.cpp	Value
+source/Editor/core/editor_xplane.cpp	t = %.1f s
+source/Editor/core/facade_tool.cpp	%zu facades selected: edits apply to all of them
+source/Editor/core/facade_tool.cpp	%zu walls
+source/Editor/core/facade_tool.cpp	%zu walls%s, %s%s
+source/Editor/core/facade_tool.cpp	3D sidewalks
+source/Editor/core/facade_tool.cpp	Fit
+source/Editor/core/facade_tool.cpp	Length
+source/Editor/core/facade_tool.cpp	Library
+source/Editor/core/facade_tool.cpp	Library
+source/Editor/core/facade_tool.cpp	No other facades in %s
+source/Editor/core/facade_tool.cpp	Not found or unreadable
+source/Editor/core/facade_tool.cpp	Offset
+source/Editor/core/facade_tool.cpp	Runs clockwise: its walls face in
+source/Editor/core/facade_tool.cpp	The facade can't be read
+source/Editor/core/facade_tool.cpp	The facade can't be read
+source/Editor/core/facade_tool.cpp	Type
+source/Editor/core/facade_tool.cpp	Type %d, %s%s
+source/Editor/core/node_tool.cpp	B-spline
+source/Editor/core/node_tool.cpp	B-spline through the nodes
+source/Editor/core/node_tool.cpp	Bezier
+source/Editor/core/node_tool.cpp	Click a node (Ctrl+A: all)
+source/Editor/core/node_tool.cpp	None (drag its grip in the viewport)
+source/Editor/core/node_tool.cpp	None (straight segments)
+source/Editor/core/node_tool.cpp	Radius %.1f m
+source/Editor/core/project_dialogs.cpp	%s  %zu %s to fix
+source/Editor/core/project_dialogs.cpp	%s  %zu airports, %zu DSF tiles (%zu objects, %zu polygons), %zu art files copied, %zu files written
+source/Editor/core/project_dialogs.cpp	%s  Export %s as an X-Plane 12 scenery pack
+source/Editor/core/project_dialogs.cpp	%s  No problems found
+source/Editor/core/project_dialogs.cpp	A new airport in %s
+source/Editor/core/project_dialogs.cpp	Airport
+source/Editor/core/project_dialogs.cpp	Airports  (Earth nav data/apt.dat)
+source/Editor/core/project_dialogs.cpp	Browse...##export
+source/Editor/core/project_dialogs.cpp	Browse...##location
+source/Editor/core/project_dialogs.cpp	Cancel
+source/Editor/core/project_dialogs.cpp	Close
+source/Editor/core/project_dialogs.cpp	Custom Scenery
+source/Editor/core/project_dialogs.cpp	Decimal degrees with up to 8 places. North and east are positive, south and west negative: 50 degrees 30 minutes south is -50.50000000. Headings in the project are true, not magnetic.
+source/Editor/core/project_dialogs.cpp	Exported
+source/Editor/core/project_dialogs.cpp	Include hidden items
+source/Editor/core/project_dialogs.cpp	KSEA
+source/Editor/core/project_dialogs.cpp	List the pack in scenery_packs.ini
+source/Editor/core/project_dialogs.cpp	Location
+source/Editor/core/project_dialogs.cpp	Optional
+source/Editor/core/project_dialogs.cpp	Optional
+source/Editor/core/project_dialogs.cpp	Optional
+source/Editor/core/project_dialogs.cpp	Optional: state, province or county
+source/Editor/core/project_dialogs.cpp	Overlay placements  (Earth nav data DSF tiles)
+source/Editor/core/project_dialogs.cpp	Project
+source/Editor/core/project_dialogs.cpp	Reference point
+source/Editor/core/project_dialogs.cpp	Reference point##hasReference
+source/Editor/core/project_dialogs.cpp	Region
+source/Editor/core/project_dialogs.cpp	Remove DSF tiles the project no longer places anything in
+source/Editor/core/project_dialogs.cpp	Removed %zu stale DSF tiles
+source/Editor/core/project_dialogs.cpp	Seattle Tacoma Intl
+source/Editor/core/project_dialogs.cpp	USA United States
+source/Editor/core/project_dialogs.cpp	Write
+source/Editor/core/project_dialogs.cpp	earth.wed.xml  (open the pack in WorldEditor)
+source/Editor/core/project_dialogs.cpp	ft
+source/Editor/core/project_dialogs.cpp	library.txt
+source/Editor/core/tools_selftest.cpp	Tools self-test: F pressed behind this modal must not move the camera
+source/Editor/core/viewport_menus.cpp	A new facade around the outline, %.2f m out
+source/Editor/core/viewport_menus.cpp	Commands run from the menus show here
+source/Editor/core/viewport_menus.cpp	None yet
+source/Editor/core/viewport_menus.cpp	Recent
+source/Editor/panels/airport_panel.cpp	%c Scanning airports...
+source/Editor/panels/airport_panel.cpp	%s No problems found
+source/Editor/panels/airport_panel.cpp	%s, line %u
+source/Editor/panels/airport_panel.cpp	%s: %zu wind, %zu time rules, %zu runway uses
+source/Editor/panels/airport_panel.cpp	%zu Gateway airports, list from %s
+source/Editor/panels/airport_panel.cpp	%zu elements, %u triangles
+source/Editor/panels/airport_panel.cpp	%zu of %zu airports
+source/Editor/panels/airport_panel.cpp	%zu rows with unknown codes are kept as they are
+source/Editor/panels/airport_panel.cpp	%zu submissions, %d approved
+source/Editor/panels/airport_panel.cpp	(deprecated%s%s)
+source/Editor/panels/airport_panel.cpp	(first 1000; type more to narrow the search)
+source/Editor/panels/airport_panel.cpp	3D only
+source/Editor/panels/airport_panel.cpp	Add to the top
+source/Editor/panels/airport_panel.cpp	Airport
+source/Editor/panels/airport_panel.cpp	All scenery packs
+source/Editor/panels/airport_panel.cpp	Approved
+source/Editor/panels/airport_panel.cpp	Artist
+source/Editor/panels/airport_panel.cpp	Cancel
+source/Editor/panels/airport_panel.cpp	Cancel
+source/Editor/panels/airport_panel.cpp	Code
+source/Editor/panels/airport_panel.cpp	Comments
+source/Editor/panels/airport_panel.cpp	Count
+source/Editor/panels/airport_panel.cpp	Create
+source/Editor/panels/airport_panel.cpp	Flows
+source/Editor/panels/airport_panel.cpp	Frequencies
+source/Editor/panels/airport_panel.cpp	Gateway
+source/Editor/panels/airport_panel.cpp	Has scenery
+source/Editor/panels/airport_panel.cpp	ID
+source/Editor/panels/airport_panel.cpp	ID
+source/Editor/panels/airport_panel.cpp	Installed
+source/Editor/panels/airport_panel.cpp	Installed to %s
+source/Editor/panels/airport_panel.cpp	Key
+source/Editor/panels/airport_panel.cpp	Kind
+source/Editor/panels/airport_panel.cpp	Location
+source/Editor/panels/airport_panel.cpp	Locked by %s
+source/Editor/panels/airport_panel.cpp	Name
+source/Editor/panels/airport_panel.cpp	Name
+source/Editor/panels/airport_panel.cpp	Position
+source/Editor/panels/airport_panel.cpp	Recommended submission %d (what X-Plane ships)
+source/Editor/panels/airport_panel.cpp	Retry
+source/Editor/panels/airport_panel.cpp	Rwy
+source/Editor/panels/airport_panel.cpp	Save As...
+source/Editor/panels/airport_panel.cpp	Scenery pack
+source/Editor/panels/airport_panel.cpp	Status
+source/Editor/panels/airport_panel.cpp	Status
+source/Editor/panels/airport_panel.cpp	The Gateway airport list hasn't been downloaded yet (about 20 MB)
+source/Editor/panels/airport_panel.cpp	Type
+source/Editor/panels/airport_panel.cpp	Uploaded
+source/Editor/panels/airport_panel.cpp	Value
+source/Editor/panels/airport_panel.cpp	read-only
+source/Editor/panels/asset_shelf_panel.cpp	Search
+source/Editor/panels/console_panel.cpp	Auto-scroll
+source/Editor/panels/console_panel.cpp	Errors
+source/Editor/panels/console_panel.cpp	Info
+source/Editor/panels/console_panel.cpp	Message
+source/Editor/panels/console_panel.cpp	Source
+source/Editor/panels/console_panel.cpp	Time
+source/Editor/panels/console_panel.cpp	Warnings
+source/Editor/panels/environment_panel.cpp	%.0f%% (lights %.0f%%)
+source/Editor/panels/environment_panel.cpp	%.0f%% lit, %s
+source/Editor/panels/environment_panel.cpp	%.1f deg up, %.0f deg %s
+source/Editor/panels/environment_panel.cpp	%.1f deg up, %.0f deg %s
+source/Editor/panels/environment_panel.cpp	%02d:%02d, day %d of the year
+source/Editor/panels/environment_panel.cpp	%s (loaded on another date)
+source/Editor/panels/environment_panel.cpp	%s, %.0f%% toward %s
+source/Editor/panels/environment_panel.cpp	Auto##Ratio
+source/Editor/panels/environment_panel.cpp	Follow the date
+source/Editor/panels/environment_panel.cpp	Rain soaks and the sun dries
+source/Editor/panels/environment_panel.cpp	Use the airport's location
+source/Editor/panels/environment_panel.cpp	ambient %.2f  direct %.2f  tone %.2f
+source/Editor/panels/environment_panel.cpp	wet %.0f%%  puddles %.0f%%  snow %.0f%%  ice %.0f%%
+source/Editor/panels/facade_editor_panel.cpp	%.0f, %.0f px
+source/Editor/panels/facade_editor_panel.cpp	%s: %zu segments (%zu curved), %zu triangles; roofs at %s
+source/Editor/panels/facade_editor_panel.cpp	%zu WALL_RULE rows (kept)
+source/Editor/panels/facade_editor_panel.cpp	%zu WALL_RULE rows (kept)
+source/Editor/panels/facade_editor_panel.cpp	%zu segments (+ curved), %zu spellings, %zu triangles straight; roof at %s
+source/Editor/panels/facade_editor_panel.cpp	Apply to all walls
+source/Editor/panels/facade_editor_panel.cpp	Closed (sidewalk)
+source/Editor/panels/facade_editor_panel.cpp	Doubled
+source/Editor/panels/facade_editor_panel.cpp	Drag a rectangle over the part of the texture the roof uses
+source/Editor/panels/facade_editor_panel.cpp	Drag an edge to move it (panels sharing it follow). Ctrl + wheel zooms.
+source/Editor/panels/facade_editor_panel.cpp	Drag the curb's strip: along the curb left to right, its top edge at the top
+source/Editor/panels/facade_editor_panel.cpp	Ends %s, repeating %s across; %s
+source/Editor/panels/facade_editor_panel.cpp	Floors up
+source/Editor/panels/facade_editor_panel.cpp	From
+source/Editor/panels/facade_editor_panel.cpp	From the walking surface's edge down to the ground (out is away from the area). Drag the points; Alt for free placement.
+source/Editor/panels/facade_editor_panel.cpp	Graded
+source/Editor/panels/facade_editor_panel.cpp	Live
+source/Editor/panels/facade_editor_panel.cpp	No roof
+source/Editor/panels/facade_editor_panel.cpp	No texture (choose one above)
+source/Editor/panels/facade_editor_panel.cpp	OBJ %zu  %s%s
+source/Editor/panels/facade_editor_panel.cpp	Out
+source/Editor/panels/facade_editor_panel.cpp	Panel
+source/Editor/panels/facade_editor_panel.cpp	Panels across
+source/Editor/panels/facade_editor_panel.cpp	Repeated
+source/Editor/panels/facade_editor_panel.cpp	Segments are kept as written (model them in a 3D tool); their objects were copied with the facade.
+source/Editor/panels/facade_editor_panel.cpp	Slant
+source/Editor/panels/facade_editor_panel.cpp	Snap all to pixels
+source/Editor/panels/facade_editor_panel.cpp	Snap to pixels
+source/Editor/panels/facade_editor_panel.cpp	Snap to pixels
+source/Editor/panels/facade_editor_panel.cpp	Square pixels
+source/Editor/panels/facade_editor_panel.cpp	Start from a preset...
+source/Editor/panels/facade_editor_panel.cpp	Stretched
+source/Editor/panels/facade_editor_panel.cpp	The project's facades folder has no facades yet
+source/Editor/panels/facade_editor_panel.cpp	To
+source/Editor/panels/facade_editor_panel.cpp	Two-sided
+source/Editor/panels/facade_editor_panel.cpp	Up
+source/Editor/panels/facade_editor_panel.cpp	none
+source/Editor/panels/facade_editor_panel.cpp	none
+source/Editor/panels/facade_editor_panel.cpp	out %.3f m, up %.3f m
+source/Editor/panels/facade_editor_panel.cpp	roof
+source/Editor/panels/facade_editor_panel.cpp	roof: %s
+source/Editor/panels/facade_editor_panel.cpp	top edge
+source/Editor/panels/facade_editor_panel.cpp	walking surface  |  out ->
+source/Editor/panels/facade_editor_panel.cpp	walls
+source/Editor/panels/facade_inspector_panel.cpp	%.3g x %.3g m
+source/Editor/panels/facade_inspector_panel.cpp	%s can't be found or read (see the console)
+source/Editor/panels/facade_inspector_panel.cpp	%zu segments, %.2f m natural, stretched to %d%%
+source/Editor/panels/facade_inspector_panel.cpp	Attached objects
+source/Editor/panels/facade_inspector_panel.cpp	Curved
+source/Editor/panels/facade_inspector_panel.cpp	Floor %d \"%s\". Natural lengths: what the wall's spellings fill without stretching (fit hangar doors to these)
+source/Editor/panels/facade_inspector_panel.cpp	Follow selection
+source/Editor/panels/facade_inspector_panel.cpp	Height
+source/Editor/panels/facade_inspector_panel.cpp	L%zu C%zu R%zu / B%zu M%zu T%zu
+source/Editor/panels/facade_inspector_panel.cpp	Name
+source/Editor/panels/facade_inspector_panel.cpp	Name
+source/Editor/panels/facade_inspector_panel.cpp	Name
+source/Editor/panels/facade_inspector_panel.cpp	Natural lengths
+source/Editor/panels/facade_inspector_panel.cpp	Nearest lengths without stretching: %.2f m and %.2f m
+source/Editor/panels/facade_inspector_panel.cpp	Panels / floors
+source/Editor/panels/facade_inspector_panel.cpp	Roofs
+source/Editor/panels/facade_inspector_panel.cpp	Rules
+source/Editor/panels/facade_inspector_panel.cpp	Rules
+source/Editor/panels/facade_inspector_panel.cpp	Segments
+source/Editor/panels/facade_inspector_panel.cpp	Spellings
+source/Editor/panels/facade_inspector_panel.cpp	Texture
+source/Editor/panels/facade_inspector_panel.cpp	This wall has no spellings with any width
+source/Editor/panels/facade_inspector_panel.cpp	Triangles
+source/Editor/panels/facade_inspector_panel.cpp	Walls
+source/Editor/panels/facade_inspector_panel.cpp	Width
+source/Editor/panels/facade_inspector_panel.cpp	X-Plane builds the floor whose top roof is closest to the facade's height
+source/Editor/panels/outliner_panel.cpp	Delete
+source/Editor/panels/outliner_panel.cpp	Empty Entity
+source/Editor/panels/outliner_panel.cpp	Frame
+source/Editor/panels/outliner_panel.cpp	Frame
+source/Editor/panels/project_panel.cpp	%.8f, %.8f  heading %.2f
+source/Editor/panels/project_panel.cpp	%s  No problems found
+source/Editor/panels/project_panel.cpp	%zu elements
+source/Editor/panels/project_panel.cpp	(cached)
+source/Editor/panels/project_panel.cpp	Empty. Place objects from the X-PLANE LIBRARY panel: they join the project.
+source/Editor/panels/project_panel.cpp	Export library.txt...
+source/Editor/panels/project_panel.cpp	Exports
+source/Editor/panels/project_panel.cpp	File
+source/Editor/panels/project_panel.cpp	Id
+source/Editor/panels/project_panel.cpp	Kind
+source/Editor/panels/project_panel.cpp	Library
+source/Editor/panels/project_panel.cpp	None: a project doesn't need an airport. Add one when the scenery has one.
+source/Editor/panels/project_panel.cpp	Region
+source/Editor/panels/project_panel.cpp	Remove from project
+source/Editor/panels/project_panel.cpp	Save As...
+source/Editor/panels/project_panel.cpp	Virtual path
+source/Editor/panels/properties_panel.cpp	%.0f m away, %u / %zu batches
+source/Editor/panels/properties_panel.cpp	%.0f m, heading %.1f
+source/Editor/panels/properties_panel.cpp	%s of
+source/Editor/panels/properties_panel.cpp	%s read-only source: Save As writes a copy
+source/Editor/panels/properties_panel.cpp	%u asset warnings
+source/Editor/panels/properties_panel.cpp	%u billboards, %u spill lit
+source/Editor/panels/properties_panel.cpp	%u entities, %u triangles, %u objects (%.0f ms)
+source/Editor/panels/properties_panel.cpp	%u of %zu (earlier draws on top)
+source/Editor/panels/properties_panel.cpp	%u triangles, %zu batches, %u materials
+source/Editor/panels/properties_panel.cpp	%zu (%zu ground vehicle)
+source/Editor/panels/properties_panel.cpp	%zu in %zu chain%s
+source/Editor/panels/properties_panel.cpp	%zu of %zu resolved: %u billboards, %u spill
+source/Editor/panels/properties_panel.cpp	%zu rings, %zu nodes
+source/Editor/panels/properties_panel.cpp	Animation
+source/Editor/panels/properties_panel.cpp	Convert
+source/Editor/panels/properties_panel.cpp	Part of
+source/Editor/panels/properties_panel.cpp	Row 15 is deprecated; convert to a 1300 startup location.
+source/Editor/panels/properties_panel.cpp	Simulation
+source/Editor/panels/properties_panel.cpp	This %s no longer exists in the document
+source/Editor/panels/scene_viewport.cpp	Clear
+source/Editor/panels/scene_viewport.cpp	Difference gain
+source/Editor/panels/scene_viewport.cpp	Frame All
+source/Editor/panels/scene_viewport.cpp	Frame Selection
+source/Editor/panels/scene_viewport.cpp	Load reference image...
+source/Editor/panels/scene_viewport.cpp	Move (m)
+source/Editor/panels/scene_viewport.cpp	No image loaded
+source/Editor/panels/scene_viewport.cpp	Opposite Side
+source/Editor/panels/scene_viewport.cpp	Orthographic
+source/Editor/panels/scene_viewport.cpp	Perspective
+source/Editor/panels/scene_viewport.cpp	REFERENCE
+source/Editor/panels/scene_viewport.cpp	Rotate (deg)
+source/Editor/panels/scene_viewport.cpp	Scale
+source/Editor/panels/scene_viewport.cpp	VIEW
+source/Editor/panels/settings_panels.cpp	All off
+source/Editor/panels/settings_panels.cpp	Defaults
+source/Editor/panels/settings_panels.cpp	Reset
+source/Editor/panels/settings_panels.cpp	Reset to startup view
+source/Editor/panels/settings_panels.cpp	X-Plane defaults
+source/Editor/panels/xplane_library_panel.cpp	%c Scanning libraries...
+source/Editor/panels/xplane_library_panel.cpp	%s  (%.0f ms)
+source/Editor/panels/xplane_library_panel.cpp	%s Loaded
+source/Editor/panels/xplane_library_panel.cpp	%u tracked / %u libraries, %u exports, %u missing
+source/Editor/panels/xplane_library_panel.cpp	%u triangles, %zu vertices, %zu batches
+source/Editor/panels/xplane_library_panel.cpp	%zu groups, %zu hide/show rules, %zu datarefs
+source/Editor/panels/xplane_library_panel.cpp	%zu lights, %u manipulators
+source/Editor/panels/xplane_library_panel.cpp	All packages
+source/Editor/panels/xplane_library_panel.cpp	All##libraries
+source/Editor/panels/xplane_library_panel.cpp	All##types
+source/Editor/panels/xplane_library_panel.cpp	Asset types
+source/Editor/panels/xplane_library_panel.cpp	Assets
+source/Editor/panels/xplane_library_panel.cpp	Assets
+source/Editor/panels/xplane_library_panel.cpp	Browse assets
+source/Editor/panels/xplane_library_panel.cpp	Check files
+source/Editor/panels/xplane_library_panel.cpp	Datarefs
+source/Editor/panels/xplane_library_panel.cpp	Datarefs
+source/Editor/panels/xplane_library_panel.cpp	Delete
+source/Editor/panels/xplane_library_panel.cpp	Export
+source/Editor/panels/xplane_library_panel.cpp	Exported by
+source/Editor/panels/xplane_library_panel.cpp	File
+source/Editor/panels/xplane_library_panel.cpp	In sim
+source/Editor/panels/xplane_library_panel.cpp	Issues
+source/Editor/panels/xplane_library_panel.cpp	Libraries
+source/Editor/panels/xplane_library_panel.cpp	Libraries
+source/Editor/panels/xplane_library_panel.cpp	Library
+source/Editor/panels/xplane_library_panel.cpp	Library
+source/Editor/panels/xplane_library_panel.cpp	Library
+source/Editor/panels/xplane_library_panel.cpp	Missing
+source/Editor/panels/xplane_library_panel.cpp	Name these filters
+source/Editor/panels/xplane_library_panel.cpp	No X-Plane installation found
+source/Editor/panels/xplane_library_panel.cpp	None yet: set the filters above, name them and save
+source/Editor/panels/xplane_library_panel.cpp	None##types
+source/Editor/panels/xplane_library_panel.cpp	Object
+source/Editor/panels/xplane_library_panel.cpp	Objects
+source/Editor/panels/xplane_library_panel.cpp	Objects + facades
+source/Editor/panels/xplane_library_panel.cpp	Only assets whose files are missing
+source/Editor/panels/xplane_library_panel.cpp	Open folder
+source/Editor/panels/xplane_library_panel.cpp	Open or create a project to keep filters with it
+source/Editor/panels/xplane_library_panel.cpp	Private and deprecated assets
+source/Editor/panels/xplane_library_panel.cpp	Region / season
+source/Editor/panels/xplane_library_panel.cpp	Rename
+source/Editor/panels/xplane_library_panel.cpp	Saved in the project
+source/Editor/panels/xplane_library_panel.cpp	Show
+source/Editor/panels/xplane_library_panel.cpp	Simulation
+source/Editor/panels/xplane_library_panel.cpp	Source
+source/Editor/panels/xplane_library_panel.cpp	Stop tracking folder
+source/Editor/panels/xplane_library_panel.cpp	Track
+source/Editor/panels/xplane_library_panel.cpp	Update to the current filters
+source/Editor/panels/xplane_library_panel.cpp	X-Plane folder
+source/Editor/panels/xplane_library_panel.cpp	single
+source/Editor/panels/xplane_library_panel.cpp	static

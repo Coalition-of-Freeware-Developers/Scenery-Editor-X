@@ -70,6 +70,7 @@ FILE(GLOB SETTINGS_FILES "settings/*.h" "settings/*.hpp" "settings/*.cpp")
 FILE(GLOB FILESYSTEM_FILES "filesystem/*.h" "filesystem/*.hpp" "filesystem/*.cpp")
 FILE(GLOB XPLANE_FILES CONFIGURE_DEPENDS "xplane/*.h" "xplane/*.hpp" "xplane/*.cpp")
 FILE(GLOB ENVIRONMENT_FILES CONFIGURE_DEPENDS "environment/*.h" "environment/*.hpp" "environment/*.cpp")
+FILE(GLOB I18N_FILES CONFIGURE_DEPENDS "i18n/*.h" "i18n/*.hpp" "i18n/*.cpp")	# Translation core (standard library only)
 
 FILE(GLOB UTILS_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "utils/*.cpp" "utils/*.h" "utils/*.hpp")
 FILE(GLOB UTILS_CONVERSIONS "utils/conversions/*.cpp" "utils/conversions/*.h" "utils/conversions/*.hpp")
@@ -126,6 +127,7 @@ ADD_LIBRARY(AppCore
 	${FILESYSTEM_FILES}
 	${XPLANE_FILES}
 	${ENVIRONMENT_FILES}
+	${I18N_FILES}
 	${SLANG_SHADERS}
 
 	# --------------------------------
@@ -274,6 +276,9 @@ SOURCE_GROUP("XPlane" FILES
 
 SOURCE_GROUP("Environment" FILES
 	${ENVIRONMENT_FILES}
+)
+SOURCE_GROUP("I18n" FILES
+	${I18N_FILES}
 )
 SOURCE_GROUP("Settings" FILES
 	${SETTINGS_FILES}

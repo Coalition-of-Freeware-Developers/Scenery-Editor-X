@@ -396,8 +396,7 @@ namespace SceneryEditorX
 
 		if (index.GetAssets().empty())
 		{
-			EditorUI::EmptyState(LibraryManager::GetInstallInfo().IsValid() ? "No library assets yet (scanning, or no tracked libraries)."
-																			  : "Set the X-Plane folder above to browse its libraries.");
+			EditorUI::EmptyState(LibraryManager::GetInstallInfo().IsValid() ? Text("No library assets yet (scanning, or no tracked libraries).") : Text("Set the X-Plane folder above to browse its libraries."));
 			return;
 		}
 
@@ -465,11 +464,10 @@ namespace SceneryEditorX
 		DrawFilterPopup(index);
 
 		ImGui::SameLine();
-		if (EditorUI::StripButton(m_GridView ? SEDX_ICON_TH_LARGE : SEDX_ICON_TH_LIST, m_GridView ? "Thumbnail grid\nClick for the list (Ctrl + wheel sizes the tiles)" :
-			"List with thumbnails\nClick for the thumbnail grid", m_GridView, buttonSize))
+		if (EditorUI::StripButton(m_GridView ? SEDX_ICON_TH_LARGE : SEDX_ICON_TH_LIST, m_GridView ? Text("Thumbnail grid\nClick for the list (Ctrl + wheel sizes the tiles)") : Text("List with thumbnails\nClick for the thumbnail grid"), m_GridView, buttonSize))
 			m_GridView = !m_GridView;
 		ImGui::SameLine();
-		if (EditorUI::StripButton(SEDX_ICON_LIST, m_GroupByLibrary ? "Grouped by library\nClick for one list" : "One list\nClick to group by library", m_GroupByLibrary, buttonSize))
+		if (EditorUI::StripButton(SEDX_ICON_LIST, m_GroupByLibrary ? Text("Grouped by library\nClick for one list") : Text("One list\nClick to group by library"), m_GroupByLibrary, buttonSize))
 			m_GroupByLibrary = !m_GroupByLibrary;
 		ImGui::SameLine();
 		ImGui::BeginDisabled(!m_GroupByLibrary);
@@ -715,7 +713,7 @@ namespace SceneryEditorX
 		ImGui::SameLine();
 		const bool exists = std::ranges::any_of(saved, [&](const ProjectFile::LibraryFilter &f) { return f.name == m_SaveName; });
 		ImGui::BeginDisabled(m_SaveName.empty());
-		if ((ImGui::Button(EditorUI::IconLabel(SEDX_ICON_FLOPPY_O, exists ? "Update" : "Save").c_str()) || enter) && !m_SaveName.empty())
+		if ((ImGui::Button(EditorUI::IconLabel(SEDX_ICON_FLOPPY_O, exists ? Text("Update") : Text("Save")).c_str()) || enter) && !m_SaveName.empty())
 		{
 			ProjectFile::LibraryFilter filter;
 			filter.name = m_SaveName;
@@ -752,7 +750,7 @@ namespace SceneryEditorX
 		const std::vector<LibraryAsset> &assets = index.GetAssets();
 		if (m_Rows.empty())
 		{
-			EditorUI::EmptyState(IsFiltering() ? "Nothing matches the search and filters." : "No assets.");
+			EditorUI::EmptyState(IsFiltering() ? Text("Nothing matches the search and filters.") : Text("No assets."));
 			return;
 		}
 
@@ -888,7 +886,7 @@ namespace SceneryEditorX
 		const std::vector<LibraryAsset> &assets = index.GetAssets();
 		if (m_Rows.empty())
 		{
-			EditorUI::EmptyState(IsFiltering() ? "Nothing matches the search and filters." : "No assets.");
+			EditorUI::EmptyState(IsFiltering() ? Text("Nothing matches the search and filters.") : Text("No assets."));
 			return;
 		}
 

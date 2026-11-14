@@ -306,8 +306,7 @@ namespace SceneryEditorX
 
 		if (FacadeAuthoring::GetKind() == FacadeAuthoring::Kind::None)
 		{
-			EditorUI::EmptyState(project ? "Start a building from a texture or a sidewalk / curb from a cross-section, or edit a facade (the X-Plane library's are copied into the project with their textures and objects)"
-				: "Open a project: new facades are saved in its facades folder");
+			EditorUI::EmptyState(project ? Text("Start a building from a texture or a sidewalk / curb from a cross-section, or edit a facade (the X-Plane library's are copied into the project with their textures and objects)") : Text("Open a project: new facades are saved in its facades folder"));
 			return;
 		}
 
@@ -359,7 +358,7 @@ namespace SceneryEditorX
 		}
 		ImGui::EndDisabled();
 		const std::string &preview = FacadeAuthoring::GetPreviewItem();
-		const std::string previewLabel = EditorUI::IconLabel(SEDX_ICON_EYE, preview.empty() ? "Place preview" : "Show preview");
+		const std::string previewLabel = EditorUI::IconLabel(SEDX_ICON_EYE, preview.empty() ? Text("Place preview") : Text("Show preview"));
 		actions.Next(FlowRow::ButtonWidth(previewLabel));
 		if (ImGui::Button(previewLabel.c_str()))
 		{
@@ -371,8 +370,7 @@ namespace SceneryEditorX
 				EditorTools::FrameSelection();
 			}
 		}
-		EditorUI::ItemTooltip(preview.empty() ? "Save, then drop a footprint built with this facade where the viewport looks (one undo step)"
-			: "Select the preview footprint and frame it in the viewport");
+		EditorUI::ItemTooltip(preview.empty() ? Text("Save, then drop a footprint built with this facade where the viewport looks (one undo step)") : Text("Select the preview footprint and frame it in the viewport"));
 		actions.Next(FlowRow::CheckboxWidth("Live"));
 		ImGui::Checkbox("Live", &FacadeAuthoring::LiveSave());
 		EditorUI::ItemTooltip("Save and redraw shortly after every change, so footprints using the facade update in the viewport (once it has been saved)");
@@ -817,8 +815,7 @@ namespace SceneryEditorX
 				panels.emplace_back(Snap(from, size, m_Snap), Snap(std::min(1.0f, from + 0.1f), size, m_Snap));
 				edited = true;
 			}
-			EditorUI::ItemTooltip(floors ? "Add a floor of this row (bottom: once at the ground, middle: repeated, top: once under the roof)"
-				: "Add a panel of this row (left / right: once at each end, center: repeated to fill the wall)");
+			EditorUI::ItemTooltip(floors ? Text("Add a floor of this row (bottom: once at the ground, middle: repeated, top: once under the roof)") : Text("Add a panel of this row (left / right: once at each end, center: repeated to fill the wall)"));
 			ImGui::PopID();
 		}
 		ImGui::EndTable();

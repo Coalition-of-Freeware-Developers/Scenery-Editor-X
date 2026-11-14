@@ -16,6 +16,7 @@ Scenery Editor X is a editor tool for use in creating, modifying, and building c
 * Time of day visualization
 * Plugin system to allow custom tools and features to be implemented to meet the users need.
 * Ability to open and convert WED projects into Scenery Editor X projects.
+* Translatable interface, switched live in Preferences. Help translate: [translator guide](docs/localization-translator-guide.md); developers: [localization system](docs/localization-system-documentation.md).
 
 ## Dependencies
 

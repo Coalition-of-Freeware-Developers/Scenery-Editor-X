@@ -1,0 +1,3022 @@
+# Machine-drafted on 2026-11-13; needs review by native speakers on Weblate.
+# German translation of Scenery Editor X.
+# Copyright (C) 2026 Coalition of Freeware Developers
+# This file is distributed under the same license as Scenery Editor X (MIT).
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Scenery Editor X\n"
+"Report-Msgid-Bugs-To: https://github.com/The3dVehicleguy/Scenery-Editor-X/issues\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "About Scenery Editor X"
+msgstr "Über Scenery Editor X"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Airports"
+msgstr "Flughäfen"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Assets"
+msgstr "Assets"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Camera"
+msgstr "Kamera"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Choose a Navigation Keymap..."
+msgstr "Navigations-Tastenbelegung wählen..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Close Airport"
+msgstr "Flughafen schließen"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Console"
+msgstr "Konsole"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Controls && Shortcuts..."
+msgstr "Steuerung && Tastenkürzel..."
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Environment"
+msgstr "Umgebung"
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "Facade"
+msgstr "Fassade"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Facade Editor"
+msgstr "Fassadeneditor"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Facades"
+msgstr "Fassaden"
+
+#. The main menu bar (also the hotbox's first row)
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "File"
+msgstr "Datei"
+
+#: source/Editor/core/editor_layer.cpp
+msgid ""
+"Fly navigation\n"
+"WASD move, Q/E down/up (no button needed), RMB look\n"
+"Q/W/E pick no tools in this mode"
+msgstr ""
+"Flugnavigation\n"
+"WASD bewegen, Q/E runter/hoch (ohne Maustaste), RMT umsehen\n"
+"Q/W/E wählen in diesem Modus keine Werkzeuge"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Frame Airport"
+msgstr "Flughafen einpassen"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Frame Selection"
+msgstr "Auswahl einpassen"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Frame all (Home)"
+msgstr "Alles einpassen (Pos1)"
+
+#: source/Editor/core/editor_layer.cpp
+#: source/Editor/core/facade_tool.cpp
+msgid "Height"
+msgstr "Höhe"
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "Help"
+msgstr "Hilfe"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Import Object (.obj)..."
+msgstr "Objekt importieren (.obj)..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Language..."
+msgstr "Sprache..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Latest warning or error. Click to open the console."
+msgstr "Letzte Warnung oder letzter Fehler. Klicken, um die Konsole zu öffnen."
+
+#: source/Editor/core/editor_layer.cpp
+#: source/Editor/core/facade_tool.cpp
+#: source/Editor/core/viewport_menus.cpp
+msgid "Library"
+msgstr "Bibliothek"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Library Browser"
+msgstr "Bibliotheksbrowser"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Navigation Keymap..."
+msgstr "Navigations-Tastenbelegung..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "New Viewport"
+msgstr "Neuer Viewport"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Open Airport (apt.dat)..."
+msgstr "Flughafen öffnen (apt.dat)..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Opens VIEWPORT 2: its own camera, a top view to start with. Drag its tab out of the window to put it on another monitor"
+msgstr "Öffnet VIEWPORT 2: eigene Kamera, zu Beginn in Draufsicht. Seinen Tab aus dem Fenster ziehen, um ihn auf einen anderen Monitor zu legen"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Orthographic projection (Numpad 5)"
+msgstr "Orthografische Projektion (Num 5)"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Outliner"
+msgstr "Gliederung"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Perspective projection (Numpad 5)"
+msgstr "Perspektivische Projektion (Num 5)"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Preferences..."
+msgstr "Einstellungen..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Project"
+msgstr "Projekt"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Properties"
+msgstr "Eigenschaften"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Read the project's facades and other art again after editing them on disk, and redraw"
+msgstr "Fassaden und andere Assets des Projekts nach dem Bearbeiten auf der Festplatte neu einlesen und neu zeichnen"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Reads the language files again, including your own in the editor's settings folder (locale), so a translation can be tested without restarting"
+msgstr "Liest die Sprachdateien neu ein, auch eigene im Einstellungsordner des Editors (locale), damit sich eine Übersetzung ohne Neustart testen lässt"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Recent"
+msgstr "Zuletzt verwendet"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Reload Facades"
+msgstr "Fassaden neu laden"
+
+#: source/Editor/core/editor_layer.cpp
+#: source/Editor/core/editor_welcome.cpp
+msgid "Reload Translations"
+msgstr "Übersetzungen neu laden"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Renderer"
+msgstr "Renderer"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Replace With"
+msgstr "Ersetzen durch"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Rescan Airports"
+msgstr "Flughäfen neu einlesen"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Rescan Libraries"
+msgstr "Bibliotheken neu einlesen"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Reset Layout"
+msgstr "Layout zurücksetzen"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Save Airport"
+msgstr "Flughafen speichern"
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "Scene"
+msgstr "Szene"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Scene Settings"
+msgstr "Szeneneinstellungen"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Set X-Plane 12 Folder..."
+msgstr "X-Plane-12-Ordner festlegen..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Top view (Numpad 7)"
+msgstr "Draufsicht (Num 7)"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Track Library Folder..."
+msgstr "Bibliotheksordner einbinden..."
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Viewport"
+msgstr "Viewport"
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "Viewport"
+msgstr "Viewport"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Viewport 2"
+msgstr "Viewport 2"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Viewport: right-click for the quad menu, hold Space for the hotbox"
+msgstr "Viewport: Rechtsklick für das Quad-Menü, Leertaste halten für die Hotbox"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "Wall Type"
+msgstr "Wandtyp"
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "Window"
+msgstr "Fenster"
+
+#: source/Editor/core/editor_layer.cpp
+msgctxt "main-menu"
+msgid "X-Plane"
+msgstr "X-Plane"
+
+#: source/Editor/core/editor_layer.cpp
+msgid "X-Plane Library"
+msgstr "X-Plane-Bibliothek"
+
+#: source/Editor/core/editor_project.cpp
+msgid "A new scenery pack (anything, anywhere), an airport or an asset library, created in Custom Scenery or a folder you choose"
+msgstr "Ein neues Szenerie-Paket (beliebiger Inhalt, beliebiger Ort), ein Flughafen oder eine Asset-Bibliothek, angelegt in Custom Scenery oder einem frei gewählten Ordner"
+
+#: source/Editor/core/editor_project.cpp
+msgid "Add a new airport (ICAO, name, reference point) to the open project"
+msgstr "Einen neuen Flughafen (ICAO, Name, Bezugspunkt) zum geöffneten Projekt hinzufügen"
+
+#: source/Editor/core/editor_project.cpp
+msgid "Close Project"
+msgstr "Projekt schließen"
+
+#: source/Editor/core/editor_project.cpp
+msgid "Export Scenery Pack..."
+msgstr "Szenerie-Paket exportieren..."
+
+#: source/Editor/core/editor_project.cpp
+msgid "New Airport in Project..."
+msgstr "Neuer Flughafen im Projekt..."
+
+#: source/Editor/core/editor_project.cpp
+msgid "New Project..."
+msgstr "Neues Projekt..."
+
+#: source/Editor/core/editor_project.cpp
+msgid "Open Project..."
+msgstr "Projekt öffnen..."
+
+#: source/Editor/core/editor_project.cpp
+msgid "Save Project"
+msgstr "Projekt speichern"
+
+#: source/Editor/core/editor_project.cpp
+msgid "Show Project Folder"
+msgstr "Projektordner anzeigen"
+
+#: source/Editor/core/editor_project.cpp
+msgid "Write the project as an X-Plane scenery pack: Earth nav data/apt.dat, the DSF tiles and the pack's own art"
+msgstr "Das Projekt als X-Plane-Szenerie-Paket schreiben: Earth nav data/apt.dat, die DSF-Kacheln und die eigenen Assets des Pakets"
+
+#. Placeholder in the search boxes of the panels
+#: source/Editor/core/editor_ui.cpp
+msgid "Search"
+msgstr "Suchen"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Action"
+msgstr "Aktion"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Glide to top / front / side views and framed selections instead of jumping"
+msgstr "Zu Drauf-, Vorder- und Seitenansichten und eingepassten Auswahlen gleiten statt springen"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Interface"
+msgstr "Oberfläche"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Invert look up / down"
+msgstr "Blick hoch / runter umkehren"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Invert orbit horizontally"
+msgstr "Orbit horizontal umkehren"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Invert orbit vertically"
+msgstr "Orbit vertikal umkehren"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Keys"
+msgstr "Tasten"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Language"
+msgstr "Sprache"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Lists languages that are less than 40% translated, and the pseudo-locale. Text that isn't translated yet stays in English"
+msgstr "Listet auch Sprachen, die zu weniger als 40% übersetzt sind, und das Pseudo-Locale. Noch nicht übersetzter Text bleibt englisch"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Navigation"
+msgstr "Navigation"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Off: the scene turns with the mouse (Blender, 3ds Max, Maya). On: the camera moves with it"
+msgstr "Aus: Die Szene dreht sich mit der Maus (Blender, 3ds Max, Maya). An: Die Kamera bewegt sich mit ihr"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Orbit speed"
+msgstr "Orbit-Tempo"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Preferences"
+msgstr "Einstellungen"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Pseudo-locale (finds untranslated and cut-off text)"
+msgstr "Pseudo-Locale (findet unübersetzten und abgeschnittenen Text)"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Right-button look: on, moving the mouse up looks down (flight-stick style)"
+msgstr "Umsehen mit rechter Maustaste: An bedeutet, Maus nach oben blickt nach unten (wie beim Steuerknüppel)"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Scenery Editor X is translated by volunteers. To help, or to fix a translation, see docs/localization-translator-guide.md. To test your own copy of a language file, put it in the locale folder of the editor's settings folder and use Reload Translations."
+msgstr "Scenery Editor X wird von Freiwilligen übersetzt. Wer helfen oder eine Übersetzung korrigieren möchte, findet alles Nötige in docs/localization-translator-guide.md. Um eine eigene Kopie einer Sprachdatei zu testen, sie in den Ordner locale im Einstellungsordner des Editors legen und „Übersetzungen neu laden“ verwenden."
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Show incomplete translations"
+msgstr "Unvollständige Übersetzungen anzeigen"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Smooth view changes"
+msgstr "Weiche Ansichtswechsel"
+
+#: source/Editor/core/editor_welcome.cpp
+#, python-brace-format
+msgid "System default: {}"
+msgstr "Systemstandard: {}"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "The language of menus, panels and messages. It changes at once; scenery data (airport names, file names, X-Plane art and datarefs) stays as it is"
+msgstr "Die Sprache von Menüs, Panels und Meldungen. Sie wechselt sofort; Szeneriedaten (Flughafennamen, Dateinamen, X-Plane-Assets und Datarefs) bleiben unverändert"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Tools"
+msgstr "Werkzeuge"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Translations"
+msgstr "Übersetzungen"
+
+#: source/Editor/core/editor_welcome.cpp
+msgid "Zoom speed"
+msgstr "Zoom-Tempo"
+
+#: source/Editor/core/editor_welcome.cpp
+#, python-brace-format
+msgid "{0} - {1}% translated"
+msgstr "{0} - {1}% übersetzt"
+
+#: source/Editor/core/editor_welcome.cpp
+#, python-brace-format
+msgid "{0} - {1}% translated (your file)"
+msgstr "{0} - {1}% übersetzt (eigene Datei)"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Night lighting"
+msgstr "Nachtbeleuchtung"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Pause"
+msgstr "Pause"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Play"
+msgstr "Abspielen"
+
+#: source/Editor/core/editor_xplane.cpp
+#: source/Editor/panels/settings_panels.cpp
+msgid "Reset"
+msgstr "Zurücksetzen"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Run or freeze the sim clock that drives object animation"
+msgstr "Die Sim-Uhr, die Objektanimationen antreibt, laufen lassen oder anhalten"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Shared with every object that reads it. A change here gives this object its own value"
+msgstr "Geteilt mit jedem Objekt, das ihn liest. Eine Änderung hier gibt diesem Objekt einen eigenen Wert"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Show LIT textures, light billboards and spill in daylight too"
+msgstr "LIT-Texturen, Licht-Billboards und Lichtschein auch bei Tageslicht zeigen"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "Speed"
+msgstr "Tempo"
+
+#: source/Editor/core/editor_xplane.cpp
+msgid "This object's own value. Click to follow the shared one again (the Simulation tab's, which every other object reading it follows)"
+msgstr "Eigener Wert dieses Objekts. Klicken, um wieder dem gemeinsamen Wert zu folgen (dem des Tabs Simulation, dem alle anderen lesenden Objekte folgen)"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "A new facade around this one's footprint: a sidewalk or curb around a building, a fence around a yard"
+msgstr "Eine neue Fassade um den Grundriss dieser Fassade: ein Gehweg oder Bordstein um ein Gebäude, ein Zaun um einen Hof"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Add around..."
+msgstr "Ringsum hinzufügen..."
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Circle wall: meters per wall of a circle (0.5 - 0.8 m suits curbs)"
+msgstr "Kreiswand: Meter pro Wand eines Kreises (0,5 - 0,8 m passt für Bordsteine)"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Click to pick (Shift adds)"
+msgstr "Klicken zum Auswählen (Umschalt fügt hinzu)"
+
+#: source/Editor/core/facade_tool.cpp
+msgid ""
+"Cut curved walls into straight pieces about this long (the 3D sidewalk recipe: X-Plane stretches gaps toward\n"
+"curve vertices, so even 0.5 - 0.8 m pieces with linear handles look right)"
+msgstr ""
+"Gebogene Wände in gerade Stücke etwa dieser Länge schneiden (das 3D-Gehweg-Rezept: X-Plane dehnt Lücken zu den\n"
+"Kurvenpunkten hin, daher sehen selbst 0,5 - 0,8 m lange Stücke mit linearen Anfassern richtig aus)"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/core/facade_tool.cpp
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "FACADE"
+msgstr "FASSADE"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Facade"
+msgstr "Fassade"
+
+#: source/Editor/core/facade_tool.cpp
+msgid ""
+"Fit lengths\n"
+"Snap each wall to a length the facade's segments fill without stretching\n"
+"(hangar doors, fixed-size walls, sidewalk pieces)"
+msgstr ""
+"Längen anpassen\n"
+"Jede Wand auf eine Länge einrasten, die die Segmente der Fassade ohne Dehnen füllen\n"
+"(Hangartore, Wände fester Größe, Gehwegstücke)"
+
+#: source/Editor/core/facade_tool.cpp
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Footprint"
+msgstr "Grundriss"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Height new facades are built at (type 2 facades snap to their floors' roofs)"
+msgstr "Höhe, in der neue Fassaden gebaut werden (Typ-2-Fassaden rasten an den Dächern ihrer Etagen ein)"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "How much the facade's segments stretch to fill the wall (100% = their own size)"
+msgstr "Wie weit die Segmente der Fassade gedehnt werden, um die Wand zu füllen (100 % = ihre eigene Größe)"
+
+#: source/Editor/core/facade_tool.cpp
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Inspect"
+msgstr "Untersuchen"
+
+#: source/Editor/core/facade_tool.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "Kind"
+msgstr "Art"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Make front"
+msgstr "Als Front festlegen"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Make the picked wall the facade's front (wall 1): X-Plane measures wall headings and lays the roof from it"
+msgstr "Die gewählte Wand zur Front der Fassade machen (Wand 1): X-Plane misst die Wandausrichtungen und legt das Dach von ihr aus an"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "New facade"
+msgstr "Neue Fassade"
+
+#: source/Editor/core/facade_tool.cpp
+msgid ""
+"On: every wall is built with the type set here (the DSF carries them).\n"
+"Off: X-Plane picks each wall by the facade's width and heading rules."
+msgstr ""
+"An: Jede Wand wird mit dem hier gesetzten Typ gebaut (die DSF speichert sie).\n"
+"Aus: X-Plane wählt jede Wand nach den Breiten- und Ausrichtungsregeln der Fassade."
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Open the facade in the FACADES inspector: floors, walls, spellings, segments"
+msgstr "Die Fassade im FASSADEN-Inspektor öffnen: Etagen, Wände, Spellings, Segmente"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Pick walls"
+msgstr "Wände wählen"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Project facades"
+msgstr "Projektfassaden"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Reverse"
+msgstr "Umkehren"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Reverse it so the walls face out"
+msgstr "Umkehren, damit die Wände nach außen zeigen"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Reverse the footprint: walls face the other way (and a fence runs the other way)"
+msgstr "Den Grundriss umkehren: Die Wände zeigen in die andere Richtung (und ein Zaun verläuft andersherum)"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Square corners"
+msgstr "Rechtwinklig machen"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Subdivide curves"
+msgstr "Kurven unterteilen"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "The front wall (headings in the facade's wall rules count from it)"
+msgstr "Die Vorderwand (die Ausrichtungen in den Wandregeln der Fassade zählen von ihr aus)"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "The wall type's width / heading rules don't take this wall (X-Plane builds it anyway when walls are picked)"
+msgstr "Die Breiten- / Ausrichtungsregeln des Wandtyps passen nicht auf diese Wand (X-Plane baut sie trotzdem, wenn Wände gewählt sind)"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Turn walls within 15 deg of the footprint's main axes onto them: right-angled corners"
+msgstr "Wände, die bis zu 15° von den Hauptachsen des Grundrisses abweichen, auf diese drehen: rechtwinklige Ecken"
+
+#: source/Editor/core/facade_tool.cpp
+msgid ""
+"Wall labels\n"
+"Numbers, types and lengths of the selected facades' walls"
+msgstr ""
+"Wandbeschriftungen\n"
+"Nummern, Typen und Längen der Wände der gewählten Fassaden"
+
+#: source/Editor/core/facade_tool.cpp
+msgid "Wall type new facades get on every wall (the first leaves the choice to X-Plane's wall rules)"
+msgstr "Wandtyp, den neue Fassaden an jeder Wand erhalten (der erste überlässt die Wahl den Wandregeln von X-Plane)"
+
+#: source/Editor/core/node_tool.cpp
+msgid "A B-spline that still passes through every node (best with evenly spaced nodes)"
+msgstr "Ein B-Spline, der trotzdem durch jeden Knoten verläuft (am besten mit gleichmäßig verteilten Knoten)"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Close the line with a segment back to its first node"
+msgstr "Linie mit einem Segment zurück zum ersten Knoten schließen"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Closed"
+msgstr "Geschlossen"
+
+#: source/Editor/core/node_tool.cpp
+msgid ""
+"Corner: no handles (Shift+C)\n"
+"Smooth: handles opposite each other, each its own length (Shift+S)\n"
+"Symmetric: mirror-image handles (Shift+Y)\n"
+"Free: handles move on their own (Shift+F)"
+msgstr ""
+"Ecke: keine Anfasser (Umschalt+C)\n"
+"Glatt: Anfasser einander gegenüber, jeder mit eigener Länge (Umschalt+S)\n"
+"Symmetrisch: spiegelbildliche Anfasser (Umschalt+Y)\n"
+"Frei: Anfasser bewegen sich unabhängig (Umschalt+F)"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Curve"
+msgstr "Kurve"
+
+#: source/Editor/core/node_tool.cpp
+msgid "DSF road subtype 0..255 (the network couldn't be read for names)"
+msgstr "DSF-Straßen-Subtyp 0..255 (das Netz konnte für die Namen nicht gelesen werden)"
+
+#: source/Editor/core/node_tool.cpp
+msgid ""
+"Edit a control polygon instead (Shift+B): the curve stays smooth (C2) and only changes near what moves.\n"
+"The nodes become the control points; a chain that already is a B-spline keeps its curve."
+msgstr ""
+"Stattdessen ein Kontrollpolygon bearbeiten (Umschalt+B): Die Kurve bleibt glatt (C2) und ändert sich nur nahe dem Bewegten.\n"
+"Die Knoten werden zu Kontrollpunkten; eine Kette, die schon ein B-Spline ist, behält ihre Kurve."
+
+#: source/Editor/core/node_tool.cpp
+msgid "Edit nodes and their handles"
+msgstr "Knoten und ihre Anfasser bearbeiten"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Handle heading (true, clockwise from north): the direction the curve leaves the node in"
+msgstr "Anfasserrichtung (rechtweisend, im Uhrzeigersinn ab Nord): die Richtung, in der die Kurve den Knoten verlässt"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Handle length: how far the curve reaches out of the node on this side"
+msgstr "Anfasserlänge: wie weit die Kurve auf dieser Seite aus dem Knoten herausreicht"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Height level at the start and end: 0 on the ground, 1 and 2 raised (bridges and overpasses)"
+msgstr "Höhenebene an Anfang und Ende: 0 am Boden, 1 und 2 erhöht (Brücken und Überführungen)"
+
+#: source/Editor/core/node_tool.cpp
+msgid "In handle"
+msgstr "Anfasser (ein)"
+
+#: source/Editor/core/node_tool.cpp
+#: source/Editor/core/project_dialogs.cpp
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/environment_panel.cpp
+msgid "Latitude"
+msgstr "Breitengrad"
+
+#: source/Editor/core/node_tool.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "Length"
+msgstr "Länge"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Levels"
+msgstr "Ebenen"
+
+#: source/Editor/core/node_tool.cpp
+#: source/Editor/core/project_dialogs.cpp
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/environment_panel.cpp
+msgid "Longitude"
+msgstr "Längengrad"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/core/node_tool.cpp
+msgid "NODES"
+msgstr "KNOTEN"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Network"
+msgstr "Netz"
+
+#: source/Editor/core/node_tool.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "Nodes"
+msgstr "Knoten"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Open the line at its selected node (or its first one)"
+msgstr "Linie am ausgewählten Knoten öffnen (oder am ersten)"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Out handle"
+msgstr "Anfasser (aus)"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Road type"
+msgstr "Straßentyp"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Roads here"
+msgstr "Straßen hier"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Roads that start or end at this node: they follow it when it moves"
+msgstr "Straßen, die an diesem Knoten beginnen oder enden: Sie folgen ihm, wenn er bewegt wird"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Selected"
+msgstr "Ausgewählt"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Shape"
+msgstr "Form"
+
+#: source/Editor/core/node_tool.cpp
+msgid ""
+"Smallest radius along the curves, measured over half a meter (sharp corners at nodes and segments under a meter don't count):\n"
+"taxiway lines and roads need gentle bends"
+msgstr ""
+"Kleinster Radius entlang der Kurven, gemessen über einen halben Meter (scharfe Ecken an Knoten und Segmente unter einem Meter zählen nicht):\n"
+"Rollweglinien und Straßen brauchen sanfte Kurven"
+
+#: source/Editor/core/node_tool.cpp
+msgid "The network's road types (its virtual types): the DSF subtype X-Plane draws the road with"
+msgstr "Die Straßentypen des Netzes (seine virtuellen Typen): der DSF-Subtyp, mit dem X-Plane die Straße zeichnet"
+
+#: source/Editor/core/node_tool.cpp
+msgid "Tightest bend"
+msgstr "Engste Kurve"
+
+#: source/Editor/core/node_tool.cpp
+#: source/Editor/core/project_dialogs.cpp
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "Type"
+msgstr "Typ"
+
+#: source/Editor/core/project_dialogs.cpp
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/outliner_panel.cpp
+msgid "Add"
+msgstr "Hinzufügen"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Airport name"
+msgstr "Flughafenname"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Art the project places from its own folder (objects/..., textures/...), with the textures it names. Library art stays in its library."
+msgstr "Assets, die das Projekt aus seinem eigenen Ordner platziert (objects/..., textures/...), mit den darin genannten Texturen. Bibliotheks-Assets bleiben in ihrer Bibliothek."
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Author"
+msgstr "Autor"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "City"
+msgstr "Stadt"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Country"
+msgstr "Land"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Create"
+msgstr "Erstellen"
+
+#: source/Editor/core/project_dialogs.cpp
+#: source/Editor/panels/airport_panel.cpp
+msgid "Create in"
+msgstr "Anlegen in"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Description"
+msgstr "Beschreibung"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Elevation (MSL)"
+msgstr "Höhe (MSL)"
+
+#: source/Editor/core/project_dialogs.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "Export"
+msgstr "Exportieren"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "ICAO code"
+msgstr "ICAO-Code"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Project name"
+msgstr "Projektname"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Show Folder"
+msgstr "Ordner anzeigen"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Something to start shaping: X-Plane needs at least one runway, water runway or helipad"
+msgstr "Etwas zum Weitergestalten: X-Plane braucht mindestens eine Start-/Landebahn, eine Wasserlandebahn oder ein Helipad"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Starter layout"
+msgstr "Startlayout"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "State / county"
+msgstr "Bundesland / Kreis"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "The airport's identifier in apt.dat: its ICAO code, or 3 to 7 letters and digits when it has none"
+msgstr "Die Kennung des Flughafens in apt.dat: sein ICAO-Code oder 3 bis 7 Buchstaben und Ziffern, wenn er keinen hat"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "The ground in the middle of the viewport (the open airport or project)"
+msgstr "Der Boden in der Mitte der Ansicht (der geöffnete Flughafen oder das Projekt)"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "The ground in the middle of the viewport: the new scenery lines up with what is open now"
+msgstr "Der Boden in der Mitte der Ansicht: die neue Szenerie richtet sich nach dem aus, was gerade geöffnet ist"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "The scenery pack's folder and the project file are named after it"
+msgstr "Der Ordner des Szenerie-Pakets und die Projektdatei werden danach benannt"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "The scenery pack's folder and the project file are named after it (empty: \"ICAO - Name\")"
+msgstr "Der Ordner des Szenerie-Pakets und die Projektdatei werden danach benannt (leer: \"ICAO - Name\")"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid ""
+"Where the scenery is: the viewport centers there and new placements start around it.\n"
+"Leave it out and the project centers on what you place (or import)"
+msgstr ""
+"Wo die Szenerie liegt: Der Viewport zentriert sich dort, und neue Platzierungen beginnen um diesen Punkt.\n"
+"Ohne Angabe zentriert sich das Projekt auf das Platzierte (oder Importierte)"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "Where the viewport looks"
+msgstr "Wohin der Viewport blickt"
+
+#: source/Editor/core/project_dialogs.cpp
+msgid "X-Plane 12's Custom Scenery folder: the pack loads in X-Plane where it's made"
+msgstr "Der Ordner Custom Scenery von X-Plane 12: Das Paket wird in X-Plane dort geladen, wo es angelegt wird"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "AIRPORT"
+msgstr "FLUGHAFEN"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "AIRPORTS"
+msgstr "FLUGHÄFEN"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Add frequency"
+msgstr "Frequenz hinzufügen"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Airport ID"
+msgstr "Flughafen-ID"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Airport code or name"
+msgstr "Flughafencode oder -name"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Airports with 3D scenery (gui_label 3D)"
+msgstr "Flughäfen mit 3D-Szenerie (gui_label 3D)"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Airports with 3D submissions"
+msgstr "Flughäfen mit 3D-Einreichungen"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "An existing pack with this name is kept; the download gets a suffix instead"
+msgstr "Ein vorhandenes Paket mit diesem Namen bleibt erhalten; der Download erhält stattdessen ein Suffix"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/airport_panel.cpp
+msgid "CONTENTS"
+msgstr "INHALT"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "Close"
+msgstr "Schließen"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Code (ICAO, IATA, FAA, local), name, city or country; several words narrow it down"
+msgstr "Code (ICAO, IATA, FAA, lokal), Name, Stadt oder Land; mehrere Wörter grenzen die Suche ein"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Contents"
+msgstr "Inhalt"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Create a scenery pack with a new airport"
+msgstr "Ein Szenerie-Paket mit einem neuen Flughafen anlegen"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "Datum"
+msgstr "Bezugspunkt"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Download list"
+msgstr "Liste herunterladen"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Download the submission X-Plane ships and open it as a scenery pack"
+msgstr "Die mit X-Plane gelieferte Einreichung herunterladen und als Szenerie-Paket öffnen"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/environment_panel.cpp
+msgid "Elevation"
+msgstr "Höhe"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Elevation (ft)"
+msgstr "Höhe (ft)"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Feet above sea level (X-Plane 12 takes it from the terrain; kept for older versions)"
+msgstr "Fuß über dem Meeresspiegel (X-Plane 12 nimmt sie vom Gelände; für ältere Versionen beibehalten)"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Fetch https://gateway.x-plane.com/apiv1/airports (kept for a day)"
+msgstr "https://gateway.x-plane.com/apiv1/airports abrufen (einen Tag lang zwischengespeichert)"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Folder the scenery pack is created in (Custom Scenery by default)"
+msgstr "Ordner, in dem das Szenerie-Paket angelegt wird (standardmäßig Custom Scenery)"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "Frame"
+msgstr "Einpassen"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Gateway"
+msgstr "Gateway"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Global Airports is read-only: Save As puts your edits in a pack of your own"
+msgstr "Global Airports ist schreibgeschützt: „Speichern unter“ legt die Änderungen in einem eigenen Paket ab"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "ID"
+msgstr "ID"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Index the apt.dat files of the X-Plane install again"
+msgstr "Die apt.dat-Dateien der X-Plane-Installation neu indizieren"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Install"
+msgstr "Installieren"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Install in"
+msgstr "Installieren in"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Install recommended..."
+msgstr "Empfohlene installieren..."
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Install selected..."
+msgstr "Ausgewählte installieren..."
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "List the pack in Custom Scenery/scenery_packs.ini so X-Plane loads it with top priority"
+msgstr "Das Paket in Custom Scenery/scenery_packs.ini eintragen, damit X-Plane es mit höchster Priorität lädt"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Load the airport into the scene"
+msgstr "Flughafen in die Szene laden"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Look the airport up on the Scenery Gateway"
+msgstr "Den Flughafen im Scenery Gateway nachschlagen"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Look up on the Gateway"
+msgstr "Im Gateway nachschlagen"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/airport_panel.cpp
+msgid "METADATA"
+msgstr "METADATEN"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "Name"
+msgstr "Name"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "New Airport..."
+msgstr "Neuer Flughafen..."
+
+#: source/Editor/panels/airport_panel.cpp
+msgid ""
+"No airport open.\n"
+"Double-click one under Installed, pull one from the Gateway, or create a new one."
+msgstr ""
+"Kein Flughafen geöffnet.\n"
+"Einen unter „Installiert“ doppelklicken, einen aus dem Gateway holen oder einen neuen anlegen."
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "Open"
+msgstr "Öffnen"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Open an airport data file from anywhere"
+msgstr "Eine Flughafendatendatei von einem beliebigen Ort öffnen"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Open apt.dat..."
+msgstr "apt.dat öffnen..."
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Pack folder name"
+msgstr "Paketordnername"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Read-only source: asks for a scenery pack folder"
+msgstr "Schreibgeschützte Quelle: fragt nach einem Szenerie-Paket-Ordner"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Refresh list"
+msgstr "Liste aktualisieren"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Rescan"
+msgstr "Neu einlesen"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/project_panel.cpp
+msgid "Reveal"
+msgstr "Anzeigen"
+
+#: source/Editor/panels/airport_panel.cpp
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/project_panel.cpp
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Save"
+msgstr "Speichern"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Show in the viewport"
+msgstr "Im Viewport zeigen"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Show on the Gateway website"
+msgstr "Auf der Gateway-Website zeigen"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Show the scenery pack folder"
+msgstr "Den Szenerie-Paket-Ordner anzeigen"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "This airport has no recommended submission"
+msgstr "Dieser Flughafen hat keine empfohlene Einreichung"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "This file belongs to X-Plane. Save As writes your edits into a scenery pack of your own."
+msgstr "Diese Datei gehört zu X-Plane. „Speichern unter“ schreibt die Änderungen in ein eigenes Szenerie-Paket."
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Unload the airport from the scene"
+msgstr "Den Flughafen aus der Szene entladen"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Up to 7 characters, unique across X-Plane (the ICAO code when there is one)"
+msgstr "Bis zu 7 Zeichen, eindeutig in ganz X-Plane (der ICAO-Code, falls vorhanden)"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Up to 7 characters: the ICAO code, or the Gateway's code for airports without one"
+msgstr "Bis zu 7 Zeichen: der ICAO-Code oder der Gateway-Code für Flughäfen ohne ICAO-Code"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "VALIDATION"
+msgstr "PRÜFUNG"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "VALIDATION (PROBLEMS)"
+msgstr "PRÜFUNG (PROBLEME)"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Website"
+msgstr "Website"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Where the airport datum (and the first runway) goes; WGS84 degrees"
+msgstr "Wo der Flughafen-Bezugspunkt (und die erste Piste) liegt; WGS84-Grad"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Write the airport into another scenery pack"
+msgstr "Den Flughafen in ein anderes Szenerie-Paket schreiben"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "Write the pack's apt.dat"
+msgstr "apt.dat des Pakets schreiben"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "datum_lat / datum_lon metadata, or the center of the runways"
+msgstr "Metadaten datum_lat / datum_lon oder die Mitte der Pisten"
+
+#: source/Editor/panels/airport_panel.cpp
+msgid "scenery_packs.ini"
+msgstr "scenery_packs.ini"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "ASSETS"
+msgstr "ASSETS"
+
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "No assets match the search"
+msgstr "Keine Assets passen zur Suche"
+
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "Parent folder"
+msgstr "Übergeordneter Ordner"
+
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "Rescan the folder"
+msgstr "Den Ordner neu einlesen"
+
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "Show or hide the library tree"
+msgstr "Bibliotheksbaum ein- oder ausblenden"
+
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "This folder is empty"
+msgstr "Dieser Ordner ist leer"
+
+#: source/Editor/panels/asset_shelf_panel.cpp
+msgid "Tile size"
+msgstr "Kachelgröße"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/console_panel.cpp
+msgid "CONSOLE"
+msgstr "KONSOLE"
+
+#: source/Editor/panels/console_panel.cpp
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Clear"
+msgstr "Leeren"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "  Base / tops"
+msgstr "  Unter-/Obergrenze"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "  Type"
+msgstr "  Typ"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "DATE & TIME"
+msgstr "DATUM & UHRZEIT"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Date"
+msgstr "Datum"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Daylight"
+msgstr "Tageslicht"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Drives the sun and moon, sim/time/* and when lights come on"
+msgstr "Steuert Sonne und Mond, sim/time/* und wann die Lichter angehen"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+#: source/Editor/panels/settings_panels.cpp
+msgid "ENVIRONMENT"
+msgstr "UMGEBUNG"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Falls as snow below 0 C"
+msgstr "Fällt unter 0 °C als Schnee"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Local time"
+msgstr "Ortszeit"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Moon"
+msgstr "Mond"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Moon phase"
+msgstr "Mondphase"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Multipliers"
+msgstr "Multiplikatoren"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Over time"
+msgstr "Mit der Zeit"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "PRESETS"
+msgstr "VORGABEN"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Place"
+msgstr "Ort"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Rain"
+msgstr "Regen"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Result"
+msgstr "Ergebnis"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Runway state"
+msgstr "Pistenzustand"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "SEASON"
+msgstr "JAHRESZEIT"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "SKY CONDITION"
+msgstr "BEWÖLKUNG"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "SUN & MOON"
+msgstr "SONNE & MOND"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "SURFACE"
+msgstr "OBERFLÄCHE"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Scenery art"
+msgstr "Szenerie-Grafik"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Season"
+msgstr "Jahreszeit"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Snow cover"
+msgstr "Schneedecke"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Sun"
+msgstr "Sonne"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Take latitude, longitude and elevation from the open airport's datum"
+msgstr "Breite, Länge und Höhe vom Bezugspunkt des geöffneten Flughafens übernehmen"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Temperature"
+msgstr "Temperatur"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Toward next"
+msgstr "Zur nächsten"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "UTC"
+msgstr "UTC"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "UTC offset"
+msgstr "UTC-Versatz"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Visibility"
+msgstr "Sicht"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/environment_panel.cpp
+msgid "WEATHER"
+msgstr "WETTER"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Waves"
+msgstr "Wellen"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Waves from"
+msgstr "Wellen aus"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Weather of the X-Plane 12 parity scenarios (tools/xp12_reference_probe)"
+msgstr "Wetter der X-Plane-12-Vergleichsszenarien (tools/xp12_reference_probe)"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Wetness builds while it rains and dries afterwards, instead of following the runway state"
+msgstr "Nässe baut sich bei Regen auf und trocknet danach ab, statt dem Pistenzustand zu folgen"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Wind from"
+msgstr "Wind aus"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Wind speed"
+msgstr "Windgeschwindigkeit"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "X-Plane's sim/weather/region/runway_friction: how wet, snowy or icy the ground is"
+msgstr "sim/weather/region/runway_friction von X-Plane: wie nass, verschneit oder vereist der Boden ist"
+
+#: source/Editor/panels/environment_panel.cpp
+msgid "Year, month, day (local date)"
+msgstr "Jahr, Monat, Tag (Ortsdatum)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "A type 1 facade from a texture: mark its panels and floors on it"
+msgstr "Eine Typ-1-Fassade aus einer Textur: Felder und Etagen darauf markieren"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "A type 2 ground facade from a cross-section (3D sidewalks, curbs, planters, low walls)"
+msgstr "Eine Typ-2-Bodenfassade aus einem Querschnitt (3D-Gehwege, Bordsteine, Pflanzbeete, niedrige Mauern)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Add a floor of this row (bottom: once at the ground, middle: repeated, top: once under the roof)"
+msgstr "Ein Stockwerk dieser Reihe hinzufügen (unten: einmal am Boden, Mitte: wiederholt, oben: einmal unter dem Dach)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Add a panel of this row (left / right: once at each end, center: repeated to fill the wall)"
+msgstr "Ein Element dieser Reihe hinzufügen (links / rechts: einmal an jedem Ende, Mitte: wiederholt, um die Wand zu füllen)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Add a point after this one"
+msgstr "Einen Punkt nach diesem hinzufügen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Add a wall type (a copy of the last): narrow walls, gable ends, a front with a door... X-Plane picks one per wall by its width and heading rules"
+msgstr "Einen Wandtyp hinzufügen (Kopie des letzten): schmale Wände, Giebelseiten, eine Front mit Tür... X-Plane wählt pro Wand einen nach seinen Breiten- und Ausrichtungsregeln"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Arm it in the facade tool (B) and draw footprints with it"
+msgstr "Im Fassadenwerkzeug (B) aktivieren und damit Grundrisse zeichnen"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "BUILDING"
+msgstr "GEBÄUDE"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "CROSS-SECTION"
+msgstr "QUERSCHNITT"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Choose a texture (copied into the facades folder when it is outside the project)"
+msgstr "Eine Textur wählen (wird in den Fassadenordner kopiert, wenn sie außerhalb des Projekts liegt)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Closed: a sidewalk or planter around an area (its roof is the walking surface). Open: a curb or wall along a line"
+msgstr "Geschlossen: ein Gehweg oder Pflanzbeet um eine Fläche (sein Dach ist die Gehfläche). Offen: ein Bordstein oder eine Mauer entlang einer Linie"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Curve pieces"
+msgstr "Kurvenstücke"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "DOUBLED: walls built inside and out (fences)"
+msgstr "DOUBLED: Wände innen und außen gebaut (Zäune)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/facade_inspector_panel.cpp
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Draw with it"
+msgstr "Damit zeichnen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Drawn to"
+msgstr "Sichtbar bis"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Edges land on whole texture pixels (hold Alt to place them freely)"
+msgstr "Kanten landen auf ganzen Texturpixeln (Alt halten, um sie frei zu setzen)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Edit selected"
+msgstr "Auswahl bearbeiten"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "FACADE EDITOR"
+msgstr "FASSADENEDITOR"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "FLOORS_MIN / FLOORS_MAX: how many floors X-Plane may build"
+msgstr "FLOORS_MIN / FLOORS_MAX: wie viele Etagen X-Plane bauen darf"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Facing these degrees from the front wall, clockwise (equal: any heading). 270 - 90 is the front half"
+msgstr "In diese Gradrichtung ab der Frontwand, im Uhrzeigersinn (gleich: jede Richtung). 270 - 90 ist die vordere Hälfte"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/facade_inspector_panel.cpp
+#: source/Editor/panels/properties_panel.cpp
+msgid "File"
+msgstr "Datei"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "File name: the facade is saved as facades/<name>.fac in the project folder"
+msgstr "Dateiname: Die Fassade wird als facades/<name>.fac im Projektordner gespeichert"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Flat on its first wall instead of draped on the terrain"
+msgstr "Eben auf ihrer ersten Wand statt aufs Gelände drapiert"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Floors"
+msgstr "Etagen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "HARD_ROOF: concrete, asphalt... what aircraft and vehicles feel on the walking surface"
+msgstr "HARD_ROOF: Beton, Asphalt... was Flugzeuge und Fahrzeuge auf der Gehfläche spüren"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "HARD_ROOF: concrete, asphalt... what aircraft and vehicles feel on this floor's roofs; empty for none"
+msgstr "HARD_ROOF: Beton, Asphalt... was Flugzeuge und Fahrzeuge auf den Dächern dieser Etage spüren; leer für keine"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "HARD_WALL / HARD_ROOF: concrete, asphalt, metal... what aircraft and vehicles feel; empty for none"
+msgstr "HARD_WALL / HARD_ROOF: Beton, Asphalt, Metall... was Flugzeuge und Fahrzeuge spüren; leer für keine"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Hard surface"
+msgstr "Harte Oberfläche"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Hard surfaces"
+msgstr "Harte Oberflächen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Headings"
+msgstr "Ausrichtungen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Kept rows"
+msgstr "Beibehaltene Zeilen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Lengths"
+msgstr "Längen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Meters of curb the strip covers along it before repeating"
+msgstr "Meter Bordstein, die der Streifen abdeckt, bevor er sich wiederholt"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Meters of roof the rectangle covers before it repeats"
+msgstr "Meter Dach, die das Rechteck abdeckt, bevor es sich wiederholt"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "More rules"
+msgstr "Weitere Regeln"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Move up: X-Plane takes the first wall type whose rules accept a wall"
+msgstr "Nach oben: X-Plane nimmt den ersten Wandtyp, dessen Regeln eine Wand akzeptieren"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "New building"
+msgstr "Neues Gebäude"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "New sidewalk / curb"
+msgstr "Neuer Gehweg / Bordstein"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Open a facade of this project's facades folder"
+msgstr "Eine Fassade aus dem Fassadenordner dieses Projekts öffnen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Open a project: new facades are saved in its facades folder"
+msgstr "Projekt öffnen: neue Fassaden werden in seinem Fassaden-Ordner gespeichert"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Options"
+msgstr "Optionen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Place preview"
+msgstr "Vorschau platzieren"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "ROOF"
+msgstr "DACH"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "ROOF_SCALE: meters of roof one roof texture covers, along the front wall and in from it"
+msgstr "ROOF_SCALE: Meter Dach, die eine Dachtextur abdeckt, entlang der Frontwand und von ihr nach innen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "ROOF_SLOPE: the top floor leans in by this angle; Slant: the sloped row shortens instead of stretching"
+msgstr "ROOF_SLOPE: Die oberste Etage neigt sich um diesen Winkel nach innen; Schräg: Die geneigte Reihe wird kürzer, statt sich zu dehnen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Redo (Ctrl+Y)"
+msgstr "Wiederholen (Strg+Y)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Remove"
+msgstr "Entfernen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Remove this wall type"
+msgstr "Diesen Wandtyp entfernen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Revert"
+msgstr "Verwerfen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Roof slope"
+msgstr "Dachneigung"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Round every edge of this wall type to whole texture pixels"
+msgstr "Jede Kante dieses Wandtyps auf ganze Texturpixel runden"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "SCALE: meters the whole texture covers across and up"
+msgstr "SCALE: Meter, die die ganze Textur in Breite und Höhe abdeckt"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "SEGMENTS"
+msgstr "SEGMENTE"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "SEGMENT_CURVED variants bend in pieces this long (the 3D sidewalk article's 0.5 - 0.8 m)"
+msgstr "SEGMENT_CURVED-Varianten biegen sich in Stücken dieser Länge (die 0,5 - 0,8 m aus dem 3D-Gehweg-Artikel)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Save and redraw shortly after every change, so footprints using the facade update in the viewport (once it has been saved)"
+msgstr "Kurz nach jeder Änderung speichern und neu zeichnen, damit sich Grundrisse mit dieser Fassade im Viewport aktualisieren (sobald sie einmal gespeichert wurde)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Save, then drop a footprint built with this facade where the viewport looks (one undo step)"
+msgstr "Speichern, dann einen Grundriss mit dieser Fassade dort ablegen, wohin die Ansicht schaut (ein Rückgängig-Schritt)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Segment lengths in meters, one segment (and curved variant) each"
+msgstr "Segmentlängen in Metern, je Segment (und gebogene Variante) eine Länge"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Select the preview footprint and frame it in the viewport"
+msgstr "Vorschau-Grundriss auswählen und in der Ansicht einpassen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Shader rows written back as they are (the textures they name were copied with the facade)"
+msgstr "Shader-Zeilen, die unverändert zurückgeschrieben werden (die darin genannten Texturen wurden mit der Fassade kopiert)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Show preview"
+msgstr "Vorschau zeigen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Spell up to"
+msgstr "Spelling bis"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Spellings"
+msgstr "Spellings"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Spellings fill every multiple of the shortest segment up to this length; longer walls repeat them"
+msgstr "Spellings füllen jedes Vielfache des kürzesten Segments bis zu dieser Länge; längere Wände wiederholen sie"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Split in two"
+msgstr "In zwei teilen"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Start a building from a texture or a sidewalk / curb from a cross-section, or edit a facade (the X-Plane library's are copied into the project with their textures and objects)"
+msgstr "Ein Gebäude aus einer Textur oder einen Gehweg / Bordstein aus einem Querschnitt beginnen, oder eine Fassade bearbeiten (die der X-Plane-Bibliothek werden mit ihren Texturen und Objekten ins Projekt kopiert)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Stretched: the rectangle covers the whole roof (ROOF corners). Repeated: it covers so many meters and repeats (ROOF_SCALE)"
+msgstr "Gedehnt: Das Rechteck deckt das ganze Dach ab (ROOF-Ecken). Wiederholt: Es deckt so viele Meter ab und wiederholt sich (ROOF_SCALE)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Strip length"
+msgstr "Streifenlänge"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Surface repeat"
+msgstr "Flächenwiederholung"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "TEXTURES"
+msgstr "TEXTUREN"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Texture repeat"
+msgstr "Texturwiederholung"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Texture size"
+msgstr "Texturgröße"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "The segment sequences X-Plane fills a wall with (read-only)"
+msgstr "Die Segmentfolgen, mit denen X-Plane eine Wand füllt (schreibgeschützt)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "The selected (or armed) facade: this project's own in place, a library or other pack's as a copy with its textures (and a type 2's objects)"
+msgstr "Die gewählte (oder aktivierte) Fassade: eigene des Projekts direkt, die einer Bibliothek oder eines anderen Pakets als Kopie mit ihren Texturen (und den Objekten einer Typ-2-Fassade)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Undo the last edit (Ctrl+Z while this panel has focus; the project's own history is separate)"
+msgstr "Letzte Änderung rückgängig machen (Strg+Z, während dieses Panel den Fokus hat; der Verlauf des Projekts ist getrennt)"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "WALL TYPES"
+msgstr "WANDTYPEN"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Wall name"
+msgstr "Wandname"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Walls this wide (meters) can get this wall type"
+msgstr "Wände dieser Breite (Meter) können diesen Wandtyp erhalten"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "What the facade tool lists the wall type as"
+msgstr "Unter welchem Namen das Fassadenwerkzeug den Wandtyp führt"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Widths"
+msgstr "Breiten"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Write the .fac (and redraw every facade using it)"
+msgstr "Die .fac schreiben (und jede Fassade, die sie nutzt, neu zeichnen)"
+
+#: source/Editor/panels/facade_editor_panel.cpp
+msgid "Zoom (Ctrl + wheel over the texture)"
+msgstr "Zoom (Strg + Mausrad über der Textur)"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "FACADES"
+msgstr "FASSADEN"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "FLOORS"
+msgstr "ETAGEN"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Objects"
+msgstr "Objekte"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "On: the selected facade (or the one armed in the facade tool). Off: the facade last sent here with Inspect"
+msgstr "An: die gewählte Fassade (oder die im Fassadenwerkzeug aktivierte). Aus: die zuletzt mit „Untersuchen“ hierher geschickte Fassade"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Open it in the FACADE EDITOR: this project's own facades in place, others (the X-Plane library's...) as a copy in the project's facades folder, their textures and objects copied along"
+msgstr "Im FASSADENEDITOR öffnen: eigene Fassaden des Projekts direkt, andere (die der X-Plane-Bibliothek...) als Kopie im Fassadenordner des Projekts, samt ihren Texturen und Objekten"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Preview this wall's spelling below"
+msgstr "Das Spelling dieser Wand unten in der Vorschau zeigen"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Read the facades (and the project's other art) again after editing them on disk, and redraw"
+msgstr "Die Fassaden (und die anderen Assets des Projekts) nach dem Bearbeiten auf der Festplatte neu einlesen und neu zeichnen"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Reload"
+msgstr "Neu laden"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "SPELLING PREVIEW"
+msgstr "SPELLING-VORSCHAU"
+
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "Select a facade, arm one in the facade tool (B), or Inspect one from the X-PLANE LIBRARY panel"
+msgstr "Eine Fassade wählen, eine im Fassadenwerkzeug (B) aktivieren oder eine aus dem Panel X-PLANE-BIBLIOTHEK untersuchen"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/facade_inspector_panel.cpp
+msgid "WALLS"
+msgstr "WÄNDE"
+
+#: source/Editor/panels/outliner_panel.cpp
+msgid "Add an entity to the scene"
+msgstr "Eine Entität zur Szene hinzufügen"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/outliner_panel.cpp
+msgid "OUTLINER"
+msgstr "GLIEDERUNG"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Add Export"
+msgstr "Export hinzufügen"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Add Files..."
+msgstr "Dateien hinzufügen..."
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Add a new airport to the project: ICAO code, name and reference point"
+msgstr "Einen neuen Flughafen zum Projekt hinzufügen: ICAO-Code, Name und Bezugspunkt"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Add the airports of an apt.dat file"
+msgstr "Die Flughäfen einer apt.dat-Datei hinzufügen"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "An asset library authors a library.txt (see LIBRARY below)"
+msgstr "Eine Asset-Bibliothek erstellt eine library.txt (siehe BIBLIOTHEK unten)"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Created"
+msgstr "Erstellt"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Edited"
+msgstr "Bearbeitet"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Elevation (m)"
+msgstr "Höhe (m)"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Export art from the project folder (real paths stay relative to it)"
+msgstr "Assets aus dem Projektordner exportieren (echte Pfade bleiben relativ dazu)"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Export the X-Plane scenery pack (Ctrl+E): apt.dat, DSF tiles and the pack's own art"
+msgstr "Das X-Plane-Szenerie-Paket exportieren (Strg+E): apt.dat, DSF-Kacheln und die eigenen Assets des Pakets"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Find Used Libraries"
+msgstr "Verwendete Bibliotheken finden"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "From apt.dat"
+msgstr "Aus apt.dat"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Hidden items stay in the project but aren't exported to X-Plane (and aren't drawn)"
+msgstr "Ausgeblendete Elemente bleiben im Projekt, werden aber nicht nach X-Plane exportiert (und nicht gezeichnet)"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Moves only when a save changes the content, so unchanged saves leave git clean"
+msgstr "Ändert sich nur, wenn ein Speichern den Inhalt ändert, damit unveränderte Speicherungen git sauber lassen"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "New"
+msgstr "Neu"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "New airport"
+msgstr "Neuer Flughafen"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "New project (Ctrl+N): scenery anywhere, an airport or an asset library"
+msgstr "Neues Projekt (Strg+N): Szenerie an beliebigem Ort, ein Flughafen oder eine Asset-Bibliothek"
+
+#: source/Editor/panels/project_panel.cpp
+msgid ""
+"No project open.\n"
+"File > New Project (Ctrl+N) for scenery, an airport or a library,\n"
+"or open a .edX / .sex project or a WorldEditor earth.wed.xml."
+msgstr ""
+"Kein Projekt geöffnet.\n"
+"Datei > Neues Projekt (Strg+N) für Szenerie, einen Flughafen oder eine Bibliothek,\n"
+"oder ein .edX- / .sex-Projekt oder eine WorldEditor-earth.wed.xml öffnen."
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Opened from the project cache: the file hasn't changed since it was last read"
+msgstr "Aus dem Projekt-Cache geöffnet: Die Datei hat sich seit dem letzten Lesen nicht geändert"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/project_panel.cpp
+msgid "PROJECT"
+msgstr "PROJEKT"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Record which X-Plane library each placed asset comes from (\"associated-library\")"
+msgstr "Festhalten, aus welcher X-Plane-Bibliothek jedes platzierte Asset stammt („associated-library“)"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Remove from project"
+msgstr "Aus Projekt entfernen"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "Save the project (Ctrl+S); its airport's edits go in with it"
+msgstr "Das Projekt speichern (Strg+S); die Änderungen an seinem Flughafen werden mitgespeichert"
+
+#: source/Editor/panels/project_panel.cpp
+msgid ""
+"Show in the airport editor\n"
+"Right-click to remove it from the project"
+msgstr ""
+"Im Flughafen-Editor zeigen\n"
+"Rechtsklick entfernt es aus dem Projekt"
+
+#: source/Editor/panels/project_panel.cpp
+msgid ""
+"Shown in the airport editor (AIRPORTS > Airport)\n"
+"Right-click to remove it from the project"
+msgstr ""
+"Im Flughafen-Editor gezeigt (FLUGHÄFEN > Flughafen)\n"
+"Rechtsklick entfernt es aus dem Projekt"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "The X-Plane version the scenery targets (\"12.1.4-r3\")"
+msgstr "Die X-Plane-Version, für die die Szenerie gedacht ist („12.1.4-r3“)"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "The project's reference point (WGS84). Unset: the first airport's datum is used"
+msgstr "Der Bezugspunkt des Projekts (WGS84). Nicht gesetzt: Der Bezugspunkt des ersten Flughafens wird verwendet"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "The scenery pack folder name the project exports to"
+msgstr "Der Name des Szenerie-Paket-Ordners, in den das Projekt exportiert"
+
+#: source/Editor/panels/project_panel.cpp
+msgid "This file isn't in the project folder"
+msgstr "Diese Datei liegt nicht im Projektordner"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Animate"
+msgstr "Animieren"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/properties_panel.cpp
+msgid "COMPONENTS"
+msgstr "KOMPONENTEN"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Custom objects"
+msgstr "Eigene Objekte"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Delete"
+msgstr "Löschen"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Edges"
+msgstr "Kanten"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Elements"
+msgstr "Elemente"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "End 1"
+msgstr "Ende 1"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "End 2"
+msgstr "Ende 2"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/properties_panel.cpp
+#: source/Editor/panels/settings_panels.cpp
+msgid "GENERAL PROPERTIES"
+msgstr "ALLGEMEINE EIGENSCHAFTEN"
+
+#: source/Editor/panels/properties_panel.cpp
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Geometry"
+msgstr "Geometrie"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "In view"
+msgstr "In Sicht"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "LOD"
+msgstr "LOD"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Layer"
+msgstr "Ebene"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Library or scenery pack art that couldn't be found or read; the log names each one"
+msgstr "Bibliotheks- oder Szenerie-Paket-Assets, die nicht gefunden oder gelesen werden konnten; das Protokoll nennt jedes einzeln"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Library path"
+msgstr "Bibliothekspfad"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Library path of a replacement vehicle (row 1402), empty for the default"
+msgstr "Bibliothekspfad eines Ersatzfahrzeugs (Zeile 1402), leer für den Standard"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Lights"
+msgstr "Lichter"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Move the camera to look at it"
+msgstr "Die Kamera darauf ausrichten"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Move the camera to look at the object"
+msgstr "Die Kamera auf das Objekt ausrichten"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Named lights come from X-Plane's lights.txt; they show at night or with \"Force lights on\""
+msgstr "Benannte Lichter stammen aus der lights.txt von X-Plane; sie leuchten nachts oder mit „Lichter erzwingen“"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "No properties found"
+msgstr "Keine Eigenschaften gefunden"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Note"
+msgstr "Hinweis"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Off freezes the animation groups in their current pose"
+msgstr "Aus friert die Animationsgruppen in ihrer aktuellen Pose ein"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Outline"
+msgstr "Umriss"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/properties_panel.cpp
+msgid "PROPERTIES"
+msgstr "EIGENSCHAFTEN"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Pipe separated: baggage_loader|fuel_jets|food|pushback ..."
+msgstr "Durch senkrechte Striche getrennt: baggage_loader|fuel_jets|food|pushback ..."
+
+#: source/Editor/panels/properties_panel.cpp
+#: source/Editor/panels/settings_panels.cpp
+msgid "Position"
+msgstr "Position"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Remove this row from the airport"
+msgstr "Diese Zeile aus dem Flughafen entfernen"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Rings"
+msgstr "Ringe"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Rotation"
+msgstr "Drehung"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Scale"
+msgstr "Skalierung"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Scene"
+msgstr "Szene"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Scenery pack"
+msgstr "Szenerie-Paket"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Shows"
+msgstr "Zeigt"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Space separated ICAO airline codes (asa dlh ...)"
+msgstr "Durch Leerzeichen getrennte ICAO-Airline-Codes (asa dlh ...)"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Surface code, or surface + 100 x shoulder width in meters"
+msgstr "Belagcode oder Belag + 100 x Randstreifenbreite in Metern"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/properties_panel.cpp
+msgid "TRANSFORM"
+msgstr "TRANSFORMATION"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "Visible"
+msgstr "Sichtbar"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/properties_panel.cpp
+msgid "X-PLANE OBJECT"
+msgstr "X-PLANE-OBJEKT"
+
+#: source/Editor/panels/properties_panel.cpp
+msgid "X-Plane sign syntax, e.g. {@Y}A{@L}22{^r}"
+msgstr "X-Plane-Schildsyntax, z. B. {@Y}A{@L}22{^r}"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"B-spline (Shift+B)\n"
+"Edit the selected chains through a control polygon: the curve stays smooth (C2)\n"
+"and only changes near the points that move. Nodes become the control points"
+msgstr ""
+"B-Spline (Umschalt+B)\n"
+"Die ausgewählten Ketten über ein Kontrollpolygon bearbeiten: die Kurve bleibt glatt (C2)\n"
+"und ändert sich nur nahe den bewegten Punkten. Knoten werden zu Kontrollpunkten"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"B-spline (Shift+B)\n"
+"Editing the control polygon: click to go back to nodes and handles"
+msgstr ""
+"B-Spline (Umschalt+B)\n"
+"Kontrollpolygon wird bearbeitet: klicken, um zu Knoten und Anfassern zurückzukehren"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Close the line (lines and strings)\n"
+"Or Ctrl+click its other end with one end selected"
+msgstr ""
+"Linie schließen (Linien und Ketten)\n"
+"Oder Strg+Klick auf das andere Ende, wenn ein Ende ausgewählt ist"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid "Delete the selected nodes (Del)"
+msgstr "Die gewählten Knoten löschen (Entf)"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Fly navigation\n"
+"RMB look, hold RMB + WASD move, Q/E down/up; the wheel moves the camera"
+msgstr ""
+"Flugnavigation\n"
+"RMT umsehen, RMT halten + WASD bewegen, Q/E runter/hoch; das Mausrad bewegt die Kamera"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Gizmo: local axes (X)\n"
+"Click for world axes"
+msgstr ""
+"Gizmo: lokale Achsen (X)\n"
+"Klicken für Weltachsen"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Gizmo: world axes (X)\n"
+"Click for the active object's axes"
+msgstr ""
+"Gizmo: Weltachsen (X)\n"
+"Klicken für die Achsen des aktiven Objekts"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid "Open the line at its selected node (or its first)"
+msgstr "Linie am ausgewählten Knoten öffnen (oder am ersten)"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Orthographic projection (Numpad 5)\n"
+"Click for perspective"
+msgstr ""
+"Orthografische Projektion (Numpad 5)\n"
+"Klicken für Perspektive"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Perspective projection (Numpad 5)\n"
+"Click for orthographic"
+msgstr ""
+"Perspektivische Projektion (Numpad 5)\n"
+"Klicken für orthografisch"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Pivot: the active object\n"
+"Click to turn and scale about the selection's center"
+msgstr ""
+"Drehpunkt: das aktive Objekt\n"
+"Klicken, um um die Mitte der Auswahl zu drehen und zu skalieren"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Pivot: the selection's center\n"
+"Click to turn and scale about the active object"
+msgstr ""
+"Drehpunkt: Mitte der Auswahl\n"
+"Klicken, um um das aktive Objekt zu drehen und zu skalieren"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Reference image\n"
+"Compare the view with an X-Plane 12 screenshot: split, difference or flicker"
+msgstr ""
+"Referenzbild\n"
+"Die Ansicht mit einem X-Plane-12-Screenshot vergleichen: geteilt, Differenz oder Flackern"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid "Reset camera to the startup view"
+msgstr "Kamera auf die Startansicht zurücksetzen"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Reverse the direction of the selected shapes (or of the selected nodes' chains)\n"
+"Facades face, strings and lines run by their direction"
+msgstr ""
+"Die Richtung der gewählten Formen (oder der Ketten der gewählten Knoten) umkehren\n"
+"Fassaden zeigen, Strings und Linien verlaufen nach ihrer Richtung"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Snapping (hold Ctrl while dragging to invert)\n"
+"Right-click: snap steps"
+msgstr ""
+"Einrasten (Strg beim Ziehen halten zum Umkehren)\n"
+"Rechtsklick: Rasterschritte"
+
+#: source/Editor/panels/scene_viewport.cpp
+msgid ""
+"Straighten (Shift+L)\n"
+"Make the segments between selected nodes straight"
+msgstr ""
+"Begradigen (Umschalt+L)\n"
+"Die Segmente zwischen gewählten Knoten gerade machen"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/scene_viewport.cpp
+msgid "VIEWPORT"
+msgstr "VIEWPORT"
+
+#: source/Editor/panels/second_viewport_panel.cpp
+msgid "Frame the airport (Home)"
+msgstr "Flughafen einpassen (Pos1)"
+
+#: source/Editor/panels/second_viewport_panel.cpp
+msgid "Match the main viewport's camera"
+msgstr "Kamera des Haupt-Viewports übernehmen"
+
+#: source/Editor/panels/second_viewport_panel.cpp
+msgid ""
+"Orthographic\n"
+"Click for perspective (Numpad 5)"
+msgstr ""
+"Orthografisch\n"
+"Klicken für Perspektive (Numpad 5)"
+
+#: source/Editor/panels/second_viewport_panel.cpp
+msgid ""
+"Perspective\n"
+"Click for orthographic (Numpad 5)"
+msgstr ""
+"Perspektive\n"
+"Klicken für orthografisch (Numpad 5)"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/second_viewport_panel.cpp
+msgid "VIEWPORT 2"
+msgstr "VIEWPORT 2"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "1 logarithmic .. 0 uniform cascade splits (shadow/csm/lambda)"
+msgstr "1 logarithmische .. 0 gleichmäßige Kaskadenaufteilung (shadow/csm/lambda)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "1: the blur never crosses depth or normal edges (ssao/sharpness)"
+msgstr "1: Die Unschärfe überschreitet nie Tiefen- oder Normalenkanten (ssao/sharpness)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "3 x 3 filtered shadow-map lookups (shadow/want_soft)"
+msgstr "3 x 3 gefilterte Shadow-Map-Abfragen (shadow/want_soft)"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "AMBIENT OCCLUSION"
+msgstr "AMBIENT OCCLUSION"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "ATMOSPHERE"
+msgstr "ATMOSPHÄRE"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Above 1 keeps mesh LODs at higher detail for longer"
+msgstr "Über 1 behält Mesh-LODs länger in höherem Detail"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Adaptation"
+msgstr "Adaption"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Added to the history mip a reflection reads (ssr/lod_bias)"
+msgstr "Wird zur History-Mip-Stufe addiert, die eine Reflexion liest (ssr/lod_bias)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Aerial range"
+msgstr "Luftperspektive"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Airglow"
+msgstr "Airglow"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "All off: the frame graph with every switchable pass off (A/B against the plain renderer)"
+msgstr "Alle aus: der Frame-Graph mit allen schaltbaren Passes aus (A/B-Vergleich mit dem einfachen Renderer)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Aperture (f)"
+msgstr "Blende (f)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Bloom"
+msgstr "Bloom"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Blur passes"
+msgstr "Unschärfe-Durchgänge"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Blur rough"
+msgstr "Raue unscharf"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "CACAO is X-Plane 12's ambient occlusion; GTAO is SEDX's older pass, for comparison"
+msgstr "CACAO ist die Ambient Occlusion von X-Plane 12; GTAO ist der ältere Pass von SEDX, zum Vergleich"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "CAMERA"
+msgstr "KAMERA"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Calm ponds"
+msgstr "Ruhige Teiche"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Casters pushed away from the light by this many times their depth slope (shadow/bias_slope, or sedx/csm_receiver_plane_slope_bias with the receiver plane)"
+msgstr "Schattenwerfer werden um so viel mal ihre Tiefensteigung vom Licht weggeschoben (shadow/bias_slope, oder sedx/csm_receiver_plane_slope_bias mit der Empfängerebene)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Choppiness"
+msgstr "Kabbeligkeit"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Cloud shadows"
+msgstr "Wolkenschatten"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Compensation"
+msgstr "Korrektur"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Cull below"
+msgstr "Ausblenden unter"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Culls, picks LODs and instances the scenery on the GPU. Off: one CPU draw call per object"
+msgstr "Culling, LOD-Wahl und Instanzierung der Szenerie auf der GPU. Aus: ein CPU-Draw-Call pro Objekt"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "DEBUG VIEW"
+msgstr "DEBUG-ANSICHT"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Debug: every surface traces as a mirror (see the Reflections debug view); the lighting takes them too"
+msgstr "Debug: Jede Oberfläche wird als Spiegel verfolgt (siehe Debug-Ansicht Reflexionen); die Beleuchtung übernimmt sie ebenfalls"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Detail"
+msgstr "Detail"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Distance"
+msgstr "Entfernung"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "EXPOSURE"
+msgstr "BELICHTUNG"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Exposure fusion: how far the shadows exposure is lifted (exposure_fusion/shadows)"
+msgstr "Belichtungsfusion: wie weit die Belichtung der Schatten angehoben wird (exposure_fusion/shadows)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Extra occlusion from the neighbouring pixels (ssao/detail_shadow_strength)"
+msgstr "Zusätzliche Verdeckung durch die Nachbarpixel (ssao/detail_shadow_strength)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "F0"
+msgstr "F0"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "FRAME"
+msgstr "BILD"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "FSR sharpness"
+msgstr "FSR-Schärfe"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "FXAA"
+msgstr "FXAA"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Fade in"
+msgstr "Einblenden"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Fade out"
+msgstr "Ausblenden"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Field of view"
+msgstr "Sichtfeld"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Foam"
+msgstr "Schaum"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Follow height"
+msgstr "Höhe folgen"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Frustum culling"
+msgstr "Frustum-Culling"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Fusion highlights"
+msgstr "Fusion-Lichter"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Fusion shadows"
+msgstr "Fusion-Schatten"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Fusion strength"
+msgstr "Fusionsstärke"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "GPU MEMORY"
+msgstr "GPU-SPEICHER"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "GPU SCENE"
+msgstr "GPU-SZENE"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "GPU TIMINGS"
+msgstr "GPU-ZEITEN"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "GPU-driven"
+msgstr "GPU-gesteuert"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Gamut compression"
+msgstr "Gamut-Kompression"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Gloss"
+msgstr "Glanz"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Gloss fade"
+msgstr "Glanzübergang"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Gloss over which reflections fade in above the minimum (sedx/ssr_gloss_fade)"
+msgstr "Glanzbereich, über den Reflexionen oberhalb des Minimums eingeblendet werden (sedx/ssr_gloss_fade)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Glossy lobes read blurred mips of the previous frame (ssr/use_prefiltered); off: every reflection is sharp"
+msgstr "Glänzende Keulen lesen unscharfe Mips des vorigen Bildes (ssr/use_prefiltered); aus: Jede Reflexion ist scharf"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Haze fade band"
+msgstr "Dunst-Übergangsband"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Haze layer top"
+msgstr "Dunstschicht-Obergrenze"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Heading / pitch"
+msgstr "Kurs / Neigung"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Hierarchical-Z iterations before a ray gives up (sedx/ssr_max_steps)"
+msgstr "Hierarchical-Z-Iterationen, bevor ein Strahl aufgibt (sedx/ssr_max_steps)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Horizon angle"
+msgstr "Horizontwinkel"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Horizontal displacement that sharpens the crests (water/h_displace_lambda)"
+msgstr "Horizontale Verschiebung, die die Wellenkämme schärft (water/h_displace_lambda)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "How far the aerial perspective volume reaches"
+msgstr "Wie weit das Volumen der Luftperspektive reicht"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "How far the display curve's working space is pulled toward grey (color_management/compression)"
+msgstr "Wie weit der Arbeitsraum der Anzeigekurve in Richtung Grau gezogen wird (color_management/compression)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "ISO"
+msgstr "ISO"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Jump straight to the metered exposure"
+msgstr "Direkt zur gemessenen Belichtung springen"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "LENS"
+msgstr "OBJEKTIV"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "LOD bias"
+msgstr "LOD-Bias"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "LOD scale"
+msgstr "LOD-Skalierung"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Limits self-occlusion on slopes and coarse geometry (ssao/horizon_angle_threshold)"
+msgstr "Begrenzt Selbstverdeckung an Hängen und grober Geometrie (ssao/horizon_angle_threshold)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Manual EV100"
+msgstr "Manueller EV100"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Max steps"
+msgstr "Max. Schritte"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Minimum gloss"
+msgstr "Mindestglanz"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Mode"
+msgstr "Modus"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "NAVIGATION"
+msgstr "NAVIGATION"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "No occlusion nearer the camera than the first distance, all of it from the second (ssao/fade_in_from, fade_in_to)"
+msgstr "Keine Verdeckung näher an der Kamera als die erste Entfernung, volle ab der zweiten (ssao/fade_in_from, fade_in_to)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "No scene camera"
+msgstr "Keine Szenenkamera"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Normal offset"
+msgstr "Normalen-Versatz"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "OUTPUT"
+msgstr "AUSGABE"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Objects whose bounding sphere covers fewer pixels than this are not drawn"
+msgstr "Objekte, deren Hüllkugel weniger Pixel als dieser Wert abdeckt, werden nicht gezeichnet"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Occlusion culling"
+msgstr "Occlusion-Culling"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "On top of the automatic exposure; positive brightens"
+msgstr "Zusätzlich zur automatischen Belichtung; positiv hellt auf"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Orbit center"
+msgstr "Orbit-Zentrum"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Orthographic views show twice this distance times tan(vertical fov / 2) from bottom to top"
+msgstr "Orthografische Ansichten zeigen das Doppelte dieser Entfernung mal tan(vertikales FOV / 2) von unten bis oben"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Passes"
+msgstr "Durchgänge"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Power"
+msgstr "Potenz"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Preset"
+msgstr "Vorgabe"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Probe LOD bias"
+msgstr "Probe-LOD-Bias"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Projection"
+msgstr "Projektion"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "QUALITY"
+msgstr "QUALITÄT"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "REFLECTIONS"
+msgstr "REFLEXIONEN"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "RENDERER"
+msgstr "RENDERER"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Radius"
+msgstr "Radius"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Radius and fade-in grow with the camera's height above the ground, as X-Plane's do (ssao/dynamic_values)"
+msgstr "Radius und Einblendung wachsen mit der Höhe der Kamera über dem Boden, wie bei X-Plane (ssao/dynamic_values)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Receiver plane"
+msgstr "Empfängerebene"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Receivers moved along their normal before the lookup (shadow/bias_n_constant; X-Plane uses 0)"
+msgstr "Empfänger werden vor der Abfrage entlang ihrer Normalen verschoben (shadow/bias_n_constant; X-Plane nutzt 0)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Reflectance looking straight down (water/F0)"
+msgstr "Reflexionsgrad bei senkrechtem Blick nach unten (water/F0)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Reflections' blur: added to roughness x 5 when the probes are sampled"
+msgstr "Unschärfe der Reflexionen: wird beim Abtasten der Probes zu Rauheit x 5 addiert"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "SCENE SETTINGS"
+msgstr "SZENENEINSTELLUNGEN"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "SHADOWS"
+msgstr "SCHATTEN"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Saturation"
+msgstr "Sättigung"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Saturation after the display curve (color_management/sdr/saturation)"
+msgstr "Sättigung nach der Anzeigekurve (color_management/sdr/saturation)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Sea floor"
+msgstr "Meeresboden"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Share of the sea floor seen through clear water (water/sea_floor_coef; 0 in X-Plane 12.4.4)"
+msgstr "Anteil des Meeresbodens, der durch klares Wasser sichtbar ist (water/sea_floor_coef; 0 in X-Plane 12.4.4)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Share of the sunlight clouds can take away (clouds/cloud_shadow_lighten_ratio)"
+msgstr "Anteil des Sonnenlichts, den Wolken wegnehmen können (clouds/cloud_shadow_lighten_ratio)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Sharpness"
+msgstr "Schärfe"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Show"
+msgstr "Anzeigen"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Shutter (s)"
+msgstr "Verschluss (s)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Size of the occlusion sphere near the ground (ssao/radius)"
+msgstr "Größe der Verdeckungskugel in Bodennähe (ssao/radius)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Skips objects hidden behind nearer ones (two-phase Hi-Z test against this frame's depth)"
+msgstr "Überspringt Objekte, die von näheren verdeckt sind (zweiphasiger Hi-Z-Test gegen die Tiefe dieses Bildes)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Slope bias"
+msgstr "Steigungs-Bias"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Soft edges"
+msgstr "Weiche Kanten"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Soft lookups compare against the receiver's own plane, so thin gaps keep their shadow (sedx/csm_receiver_plane); off: X-Plane's caster bias alone"
+msgstr "Weiche Abfragen vergleichen mit der eigenen Ebene des Empfängers, damit dünne Spalten ihren Schatten behalten (sedx/csm_receiver_plane); aus: nur der Werfer-Bias von X-Plane"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Split lambda"
+msgstr "Aufteilungs-Lambda"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Stars"
+msgstr "Sterne"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Strength"
+msgstr "Stärke"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Technique"
+msgstr "Technik"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "The DSF's fetch ratio scales the waves: lakes and ponds stay calm (sedx/water_use_fetch)"
+msgstr "Das Fetch-Verhältnis der DSF skaliert die Wellen: Seen und Teiche bleiben ruhig (sedx/water_use_fetch)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "The night sky's floor: airglow and unresolved starlight"
+msgstr "Die Grundhelligkeit des Nachthimmels: Airglow und unaufgelöstes Sternenlicht"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "The surface haze layer's top above the ground (at least; very clear air mixes higher)"
+msgstr "Obergrenze der bodennahen Dunstschicht über dem Boden (mindestens; sehr klare Luft mischt sich höher)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "The surface's own gloss before the waves roughen it (water/gloss)"
+msgstr "Der Eigenglanz der Oberfläche, bevor die Wellen sie aufrauen (water/gloss)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Thickness"
+msgstr "Dicke"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Time of day"
+msgstr "Tageszeit"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Tone curve"
+msgstr "Tonkurve"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Trace everything"
+msgstr "Alles verfolgen"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Turbidity"
+msgstr "Trübung"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "USER INTERFACE"
+msgstr "BENUTZEROBERFLÄCHE"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "View"
+msgstr "Ansicht"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "WATER"
+msgstr "WASSER"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Waves break where their surface folds tighter than this (water/foam_bias): higher, more foam"
+msgstr "Wellen brechen, wo sich ihre Oberfläche enger als dieser Wert faltet (water/foam_bias): höher, mehr Schaum"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "What stands in the water fades over turbidity / (1 - the water map's alpha) meters (water/turbidity)"
+msgstr "Was im Wasser steht, verblasst über Trübung / (1 - Alpha der Wasserkarte) Meter (water/turbidity)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "Wind (m/s)"
+msgstr "Wind (m/s)"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "X-Plane 12's defaults for desktop Vulkan (vkmtl_async): what the parity references use"
+msgstr "Die Standardwerte von X-Plane 12 für Desktop-Vulkan (vkmtl_async): was die Vergleichsreferenzen verwenden"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "X-Plane 12: its display transform and grade (the parity look); the others are ungraded, for comparison"
+msgstr "X-Plane 12: dessen Anzeigetransformation und Grading (der Vergleichslook); die anderen sind ohne Grading, zum Vergleich"
+
+#. A section header in a panel, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/settings_panels.cpp
+msgid "XP12 EMULATION"
+msgstr "XP12-EMULATION"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "ssao/blur_pass_count"
+msgstr "ssao/blur_pass_count"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "ssao/fade_out_from, fade_out_to"
+msgstr "ssao/fade_out_from, fade_out_to"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "ssao/shadow_multiplier"
+msgstr "ssao/shadow_multiplier"
+
+#: source/Editor/panels/settings_panels.cpp
+msgid "ssao/shadow_power"
+msgstr "ssao/shadow_power"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Also list scenery packages without a library.txt"
+msgstr "Auch Szenerie-Pakete ohne library.txt auflisten"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Animation"
+msgstr "Animation"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid ""
+"Arm the facade tool with it (B): draw a polygon, rectangle, circle or line in the viewport.\n"
+"Or drag it onto the ground for a default footprint"
+msgstr ""
+"Damit das Fassadenwerkzeug aktivieren (B): ein Polygon, Rechteck, einen Kreis oder eine Linie im Viewport zeichnen.\n"
+"Oder auf den Boden ziehen für einen Standardgrundriss"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Browse..."
+msgstr "Durchsuchen..."
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Clear all filters"
+msgstr "Alle Filter löschen"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Click to apply. Right-click to rename, update or delete"
+msgstr "Klicken zum Anwenden. Rechtsklick zum Umbenennen, Aktualisieren oder Löschen"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Close every library"
+msgstr "Alle Bibliotheken zuklappen"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Copy path"
+msgstr "Pfad kopieren"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Copy the virtual path (for DSF / WED placements)"
+msgstr "Den virtuellen Pfad kopieren (für DSF-/WED-Platzierungen)"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Detect"
+msgstr "Erkennen"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Find X-Plane 11 and 12 installs: X-Plane's own install lists, Steam libraries, the registry and the usual folders"
+msgstr "X-Plane-11- und -12-Installationen finden: die eigenen Installationslisten von X-Plane, Steam-Bibliotheken, die Registry und die üblichen Ordner"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Floors, walls and their rules, spellings and segments in the FACADES inspector"
+msgstr "Etagen, Wände und ihre Regeln, Spellings und Segmente im FASSADEN-Inspektor"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid ""
+"Grouped by library\n"
+"Click for one list"
+msgstr ""
+"Nach Bibliothek gruppiert\n"
+"Klicken für eine Liste"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "LODs"
+msgstr "LODs"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid ""
+"List with thumbnails\n"
+"Click for the thumbnail grid"
+msgstr ""
+"Liste mit Vorschaubildern\n"
+"Klicken für das Vorschaubild-Raster"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Lit texture"
+msgstr "Leuchttextur"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "No assets."
+msgstr "Keine Assets."
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "No library assets yet (scanning, or no tracked libraries)."
+msgstr "Noch keine Bibliotheks-Assets (Suche läuft oder keine verfolgten Bibliotheken)."
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Normal map"
+msgstr "Normal-Map"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Nothing matches the search and filters."
+msgstr "Nichts passt zu Suche und Filtern."
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid ""
+"One list\n"
+"Click to group by library"
+msgstr ""
+"Eine Liste\n"
+"Klicken, um nach Bibliothek zu gruppieren"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Only objects (.obj) and facades (.fac) can be placed for now"
+msgstr "Vorerst lassen sich nur Objekte (.obj) und Fassaden (.fac) platzieren"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Open every library"
+msgstr "Alle Bibliotheken aufklappen"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Other"
+msgstr "Sonstige"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Place in scene"
+msgstr "In Szene platzieren"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Places the object right away; it appears when it has loaded in the background"
+msgstr "Platziert das Objekt sofort; es erscheint, sobald es im Hintergrund geladen ist"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Saved with the project (.edX / .sex), so everyone working on it gets the same filters"
+msgstr "Wird mit dem Projekt gespeichert (.edX / .sex), damit alle Beteiligten dieselben Filter haben"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Search virtual paths: words narrow it down, -word leaves out (\"hangar -small\")"
+msgstr "Virtuelle Pfade durchsuchen: Wörter grenzen ein, -Wort schließt aus („hangar -small“)"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid ""
+"Select an asset to see where it comes from.\n"
+"Double-click or drag an object into the viewport to place it.\n"
+"Double-click a facade to draw with it, or drag it onto the ground."
+msgstr ""
+"Ein Asset wählen, um zu sehen, woher es stammt.\n"
+"Ein Objekt doppelklicken oder in den Viewport ziehen, um es zu platzieren.\n"
+"Eine Fassade doppelklicken, um damit zu zeichnen, oder auf den Boden ziehen."
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Set the X-Plane folder above to browse its libraries."
+msgstr "Oben den X-Plane-Ordner festlegen, um seine Bibliotheken zu durchsuchen."
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Show file"
+msgstr "Datei anzeigen"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Texture"
+msgstr "Textur"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid ""
+"Thumbnail grid\n"
+"Click for the list (Ctrl + wheel sizes the tiles)"
+msgstr ""
+"Vorschaubild-Raster\n"
+"Klicken für die Liste (Strg + Mausrad ändert die Kachelgröße)"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Track a library folder outside X-Plane (for example a library you are building)"
+msgstr "Einen Bibliotheksordner außerhalb von X-Plane einbinden (zum Beispiel eine Bibliothek im Aufbau)"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Track folder..."
+msgstr "Ordner einbinden..."
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Update"
+msgstr "Aktualisieren"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Verify that every exported file exists (flags broken libraries; slower scans)"
+msgstr "Prüfen, ob jede exportierte Datei existiert (markiert defekte Bibliotheken; langsamere Scans)"
+
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "Warnings"
+msgstr "Warnungen"
+
+#. A panel title, shown in capitals: write it in capitals too if your script has them.
+#: source/Editor/panels/xplane_library_panel.cpp
+msgid "X-PLANE LIBRARY"
+msgstr "X-PLANE-BIBLIOTHEK"
+
+#. names in Dear ImGui's window list (Ctrl+Tab)
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "(Main menu bar)"
+msgstr "(Hauptmenüleiste)"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "(Popup)"
+msgstr "(Popup)"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "(Untitled)"
+msgstr "(Unbenannt)"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Click and drag to move or undock whole node."
+msgstr "Klicken und ziehen, um den ganzen Knoten zu verschieben oder abzudocken."
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Copy Link"
+msgstr "Link kopieren"
+
+#. Dear ImGui's docking tab menu and hints
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Hide tab bar"
+msgstr "Tab-Leiste ausblenden"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Hold SHIFT to enable Docking window."
+msgstr "UMSCHALT halten, um das Fenster anzudocken."
+
+#. %s is a web address
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Open '%s'"
+msgstr "„%s“ öffnen"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Reset"
+msgstr "Zurücksetzen"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Reset order"
+msgstr "Reihenfolge zurücksetzen"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Reset visibility"
+msgstr "Sichtbarkeit zurücksetzen"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Size all columns to default"
+msgstr "Alle Spalten auf Standardbreite"
+
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Size all columns to fit"
+msgstr "Alle Spalten an Inhalt anpassen"
+
+#. Dear ImGui's table header context menu
+#: source/SceneryEditorX/renderer/ui/i18n_imgui.cpp
+msgctxt "imgui"
+msgid "Size column to fit"
+msgstr "Spalte an Inhalt anpassen"

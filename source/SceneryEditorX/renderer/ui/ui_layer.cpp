@@ -29,15 +29,23 @@
  * -------------------------------------------------------
  */
 #include "ui_layer.h"
+#include "i18n_imgui.h"
 #include "ui_impl.h"
 #include "resources/fonts.h"
 #include "source/imgui/imgui.h"
 #include "source/imgui/backends/imgui_impl_sdl3.h"
+#include <SceneryEditorX/core/localization.h>
+#include <SceneryEditorX/i18n/font_coverage.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/filesystem/vfs.h>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
+#include <cstdio>
+#include <fstream>
+#include <iterator>
+#include <memory>
+#include <set>
 
 // -------------------------------------------------------
 
@@ -48,6 +56,12 @@ namespace SceneryEditorX
 		// The dock layout and window placement, in ImGui's own format. Read and written through the VFS (ImGui's
 		// file IO is off): atomic writes, and the same roaming settings folder on Windows, macOS and Linux.
 		constexpr const char *INI_FILE = "user:/editor.ini";
+
+		// Every UI font's default size; the renderer backend rasterizes other sizes on demand
+		constexpr float FONT_SIZE = 15.0f;
+
+		// The UI fonts a language font is merged into (each must cover the language, or headers show '?')
+		constexpr const char *UI_FONTS[] = { "Default", "Light", "Medium", "SemiBold", "Bold" };
 
 		void LoadIniSettings()
 		{
@@ -94,6 +108,8 @@ namespace SceneryEditorX
 		ImGui::GetStyle().FontScaleDpi = Window::GetDpiScale();
 
 		LoadFonts();
+		MergeLanguageFont();
+		I18n::ApplyImGuiLocalization();
 
 		SDL_Window *window = Window::GetWindow();
 		SEDX_CORE_ASSERT(window != nullptr, "SDL_Window is null when initializing ImGui SDL backend");
@@ -145,6 +161,13 @@ namespace SceneryEditorX
 	{
 		if (!m_Initialized)
 			return;
+
+		// A language chosen in Preferences takes effect here, between frames: its font may have to be merged first
+		if (Localization::ApplyPendingChange())
+		{
+			MergeLanguageFont();
+			I18n::ApplyImGuiLocalization();
+		}
 
 		UI::NewFrame();
 		ImGui_ImplSDL3_NewFrame();
@@ -201,8 +224,7 @@ namespace SceneryEditorX
 			return;
 		}
 
-		// Sizes are the defaults for each font; the renderer backend rasterizes other sizes on demand.
-		constexpr float baseSize = 15.0f;
+		constexpr float baseSize = FONT_SIZE;
 
 		UI::Fonts::Add({ .FontName = "Default", .FilePath = fontDir + "opensans/OpenSans-Regular.ttf", .Size = baseSize }, true);
 
@@ -213,6 +235,90 @@ namespace SceneryEditorX
 		UI::Fonts::Add({ .FontName = "Medium",   .FilePath = fontDir + "opensans/OpenSans-Medium.ttf",   .Size = baseSize });
 		UI::Fonts::Add({ .FontName = "SemiBold", .FilePath = fontDir + "opensans/OpenSans-SemiBold.ttf", .Size = baseSize });
 		UI::Fonts::Add({ .FontName = "Bold",     .FilePath = fontDir + "opensans/OpenSans-Bold.ttf",     .Size = baseSize });
+	}
+
+	void UILayer::MergeLanguageFont()
+	{
+		const I18n::LanguageInfo *language = I18n::GetLanguageInfo();
+		if (!language || !language->NeedsCjkFont() || !UI::Fonts::Find("Default"))
+			return;
+
+		// Merged once per script and kept until the editor closes: switching from Japanese to Chinese later keeps the
+		// Japanese font first, so shared Han characters keep its shapes until a restart. A script counts as merged only
+		// once a font was merged for it, so after a failed search (no font installed yet, a bad ui.language_font) choosing
+		// the language again or Reload Translations searches again. The search (file reads, fc-match on Linux) runs when a
+		// language change is applied between frames, never per frame
+		static std::set<I18n::Script> merged;
+		if (merged.contains(language->script))
+			return;
+
+		// The first candidate that has every character of the language's sample (the user's own choice whatever it has);
+		// else the one that lacks the fewest. A file name, or fontconfig's answer, doesn't promise the characters.
+		const std::u32string sample = I18n::DecodeUtf8(language->Sample());
+		std::optional<Localization::FontFile> font;
+		std::unique_ptr<std::string> data;
+		std::size_t fewestMissing = sample.size() + 1;
+		for (const Localization::FontFile &candidate : Localization::FindLanguageFonts(*language))
+		{
+			std::ifstream file(VFS::FromUtf8(candidate.path), std::ios::binary);
+			auto bytes = std::make_unique<std::string>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+			const std::optional<std::size_t> missing = I18n::CountMissingGlyphs(*bytes, candidate.face, sample);
+			if (!missing)
+			{
+				SEDX_CORE_WARN_TAG("UILayer", "Skipping {} (face {}) for {}: not a font this can read", candidate.path, candidate.face, language->englishName);
+				continue;
+			}
+			if (*missing > 0 && !candidate.chosen)
+				SEDX_CORE_INFO_TAG("UILayer", "{} (face {}) lacks {} of the {} sample characters", candidate.path, candidate.face, *missing, language->englishName);
+			if (*missing < fewestMissing)
+			{
+				fewestMissing = *missing;
+				font = candidate;
+				data = std::move(bytes);
+			}
+			if (*missing == 0 || candidate.chosen)
+				break;
+		}
+		if (!font || (!font->chosen && !sample.empty() && fewestMissing == sample.size()))
+		{
+			SEDX_CORE_WARN_TAG("UILayer", "No font for {} found: install the {} language fonts of the operating system, or set ui.language_font "
+				"in settings.cfg to a font file. Its text shows as '?' until then", language->englishName, language->englishName);
+			return;
+		}
+		if (fewestMissing > 0)
+			SEDX_CORE_WARN_TAG("UILayer", "Using {} (face {}) for {}, which lacks {} of its sample characters", font->path, font->face,
+				language->englishName, fewestMissing);
+
+		// Read once and shared by the five UI fonts; the atlas doesn't own it, so it stays for the whole session
+		static std::vector<std::unique_ptr<std::string>> fontData;
+
+		ImGuiIO &io = ImGui::GetIO();
+		int mergedInto = 0;
+		for (const char *name : UI_FONTS)
+		{
+			ImFont *target = UI::Fonts::Find(name);
+			if (!target)
+				continue;
+			ImFontConfig config;
+			config.MergeMode = true;
+			config.DstFont = target;
+			config.FontNo = static_cast<ImU32>(font->face);
+			config.FontDataOwnedByAtlas = false;
+			std::snprintf(config.Name, sizeof(config.Name), "%.*s (%s)", static_cast<int>(language->englishName.size()), language->englishName.data(), name);
+			if (io.Fonts->AddFontFromMemoryTTF(data->data(), static_cast<int>(data->size()), FONT_SIZE, &config))
+				++mergedInto;
+		}
+		// The atlas keeps pointing at the data even when a merge failed, so it stays alive either way
+		fontData.push_back(std::move(data));
+		if (mergedInto == 0)
+		{
+			SEDX_CORE_WARN_TAG("UILayer", "Dear ImGui couldn't load {} (face {}) for {}", font->path, font->face, language->englishName);
+			return;
+		}
+
+		merged.insert(language->script);
+		SEDX_CORE_INFO_TAG("UILayer", "Merged {} (face {}, {:.1f} MB) into the UI fonts for {}", font->path, font->face,
+			static_cast<double>(fontData.back()->size()) / (1024.0 * 1024.0), language->englishName);
 	}
 
 } // namespace SceneryEditorX

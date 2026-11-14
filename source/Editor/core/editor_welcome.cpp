@@ -35,6 +35,11 @@
 #include <Editor/core/viewport_camera.h>
 #include <Editor/settings/editor_preferences.h>
 #include <SceneryEditorX/core/application/application.h>
+#include <SceneryEditorX/core/localization.h>
+#include <SceneryEditorX/i18n/i18n.h>
+#include <SceneryEditorX/i18n/pseudo.h>
+#include <SceneryEditorX/i18n/tr.h>
+#include <SceneryEditorX/renderer/ui/i18n_imgui.h>
 #include <SceneryEditorX/renderer/font/font_awesome.h>
 #include <SceneryEditorX/renderer/ui/resources/fonts.h>
 
@@ -50,7 +55,13 @@ namespace SceneryEditorX::EditorWelcome
 		{
 			bool showWelcome = false;			// Open the modal next frame
 			bool preferencesOpen = false;
+			std::optional<PreferencesPage> selectPage;	// Selected once, when the window is opened on a page
 			NavigationKeymap highlighted = NavigationKeymap::Blender;
+
+			// Languages for the Interface page, read when the page opens and after a language change
+			std::vector<I18n::LanguageChoice> languages;
+			std::uint64_t languagesGeneration = 0;
+			std::string systemLanguage;	// What "system" resolves to (asked once per refresh, not every frame)
 		};
 
 		State &S()
@@ -62,6 +73,121 @@ namespace SceneryEditorX::EditorWelcome
 		ImVec4 Color(const ImVec4 &srgb)
 		{
 			return EditorTheme::ToStyle(srgb);
+		}
+
+		/* @brief The first character of UTF-8 text. */
+		unsigned FirstCodePoint(const std::string_view text)
+		{
+			if (text.empty())
+				return 0;
+			const unsigned char lead = static_cast<unsigned char>(text[0]);
+			if (lead < 0x80 || text.size() < 2)
+				return lead;
+			if ((lead & 0xE0) == 0xC0)
+				return ((lead & 0x1Fu) << 6) | (static_cast<unsigned char>(text[1]) & 0x3Fu);
+			if ((lead & 0xF0) == 0xE0 && text.size() >= 3)
+				return ((lead & 0x0Fu) << 12) | ((static_cast<unsigned char>(text[1]) & 0x3Fu) << 6) | (static_cast<unsigned char>(text[2]) & 0x3Fu);
+			return 0xFFFD;
+		}
+
+		/* @brief A language's own name when the UI font can draw it ("Deutsch", "\u65E5\u672C\u8A9E"), else its English name. */
+		std::string LanguageName(const I18n::LanguageInfo *info, const std::string_view fallback)
+		{
+			if (!info)
+				return std::string(fallback);
+			ImFont *font = UI::Fonts::Find("Default");
+			const unsigned first = FirstCodePoint(info->NativeName());
+			const bool drawable = first < 0x80 || (font && first <= 0xFFFF && font->IsGlyphInFont(static_cast<ImWchar>(first)));
+			if (!drawable)
+				return std::string(info->englishName);
+			if (info->NativeName() == info->englishName)
+				return std::string(info->englishName);
+			return std::string(info->NativeName()) + " (" + std::string(info->englishName) + ")";
+		}
+
+		/* @brief Interface page: the language and how much of each translation there is. */
+		void DrawInterfacePage()
+		{
+			State &s = S();
+			if (s.languages.empty() || s.languagesGeneration != I18n::GetGeneration())
+			{
+				s.languages = I18n::GetLanguageChoices();
+				s.languagesGeneration = I18n::GetGeneration();
+				s.systemLanguage = Localization::ResolveSystemLanguage();
+			}
+
+			const std::string setting = Localization::GetLanguageSetting();
+			const bool showIncomplete = Localization::GetShowIncomplete();
+			const std::string &system = s.systemLanguage;
+			const std::string systemName = LanguageName(I18n::FindLanguage(system), system);
+
+			struct Option
+			{
+				std::string setting;
+				std::string label;	// Shown, then "###" and the setting (a stable ID)
+			};
+			std::vector<Option> options;
+			options.push_back({ std::string(Localization::SYSTEM), TrF("System default: {}", systemName) });
+			options.push_back({ std::string(I18n::SOURCE_LANGUAGE), "English" });
+			for (const I18n::LanguageChoice &language : s.languages)
+			{
+				if (language.failed)
+					continue;
+				const int percent = static_cast<int>(language.stats.Completion() * 100.0f + 0.5f);
+				const bool listed = showIncomplete || language.stats.Completion() >= Localization::LISTED_COMPLETION || language.tag == setting;
+				if (!listed)
+					continue;
+				// TRANSLATORS: A language in the list of Preferences > Interface: {0} is its name, {1} how much of it is translated
+				const std::string name = LanguageName(language.info, language.englishName);
+				std::string label = language.user ? TrF("{0} - {1}% translated (your file)", name, percent) : TrF("{0} - {1}% translated", name, percent);
+				options.push_back({ language.tag, std::move(label) });
+			}
+			const std::string pseudoLabel = Tr("Pseudo-locale (finds untranslated and cut-off text)");
+			if (showIncomplete)
+				options.push_back({ std::string(I18n::PSEUDO_LANGUAGE), pseudoLabel });
+
+			std::string preview = setting == I18n::PSEUDO_LANGUAGE ? pseudoLabel : setting;
+			for (const Option &option : options)
+				if (option.setting == setting)
+					preview = option.label;
+
+			// The label column fits its longest label in the active language (German is about a third longer than English)
+			const float dpi = ImGui::GetStyle().FontScaleDpi;
+			const float labels = std::max(ImGui::CalcTextSize(Tr("Language")).x, ImGui::CalcTextSize(Tr("Show incomplete translations")).x);
+			if (EditorUI::BeginPropertyGrid("##InterfaceOptions", std::max(190.0f, labels / dpi + 16.0f)))
+			{
+				EditorUI::PropertyLabel("Language");
+				if (ImGui::BeginCombo("##language", preview.c_str()))
+				{
+					for (const Option &option : options)
+					{
+						const std::string label = option.label + "###" + option.setting;
+						if (ImGui::Selectable(label.c_str(), option.setting == setting))
+							Localization::RequestLanguage(option.setting);
+					}
+					ImGui::EndCombo();
+				}
+				EditorUI::ItemTooltip("The language of menus, panels and messages. It changes at once; scenery data (airport names, "
+					"file names, X-Plane art and datarefs) stays as it is");
+
+				EditorUI::PropertyLabel("Show incomplete translations");
+				bool show = showIncomplete;
+				if (ImGui::Checkbox("##showIncomplete", &show))
+					Localization::SetShowIncomplete(show);
+				EditorUI::ItemTooltip("Lists languages that are less than 40% translated, and the pseudo-locale. Text that isn't "
+					"translated yet stays in English");
+				EditorUI::EndPropertyGrid();
+			}
+
+			ImGui::Spacing();
+			ImGui::SeparatorText(Tr("Translations"));
+			ImGui::PushTextWrapPos(0.0f);
+			ImGui::TextUnformatted(Tr("Scenery Editor X is translated by volunteers. To help, or to fix a translation, see "
+				"docs/localization-translator-guide.md. To test your own copy of a language file, put it in the locale folder "
+				"of the editor's settings folder and use Reload Translations."));
+			ImGui::PopTextWrapPos();
+			if (ImGui::Button(TrL("Reload Translations")))
+				Localization::RequestReload();
 		}
 
 		/* @brief A keymap's binding table. */
@@ -188,7 +314,7 @@ namespace SceneryEditorX::EditorWelcome
 			const float dpi = ImGui::GetStyle().FontScaleDpi;
 			ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 			ImGui::SetNextWindowSize(ImVec2(680.0f * dpi, 560.0f * dpi), ImGuiCond_FirstUseEver);
-			if (!ImGui::Begin("Preferences###EditorPreferences", &s.preferencesOpen, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
+			if (!ImGui::Begin(TrL("Preferences###EditorPreferences"), &s.preferencesOpen, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
 			{
 				ImGui::End();
 				return;
@@ -196,9 +322,13 @@ namespace SceneryEditorX::EditorWelcome
 
 			EditorPreferences &preferences = EditorPreferences::Get();
 			bool changed = false;
+			const auto pageFlags = [&s](const PreferencesPage page)
+			{
+				return s.selectPage == page ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None;
+			};
 			if (ImGui::BeginTabBar("##PreferenceTabs"))
 			{
-				if (ImGui::BeginTabItem("Navigation"))
+				if (ImGui::BeginTabItem(TrL("Navigation"), nullptr, pageFlags(PreferencesPage::Navigation)))
 				{
 					ImGui::Spacing();
 					NavigationKeymap keymap = preferences.keymap;
@@ -235,15 +365,15 @@ namespace SceneryEditorX::EditorWelcome
 					ImGui::EndTabItem();
 				}
 
-				if (ImGui::BeginTabItem("Tools"))
+				if (ImGui::BeginTabItem(TrL("Tools"), nullptr, pageFlags(PreferencesPage::Tools)))
 				{
 					ImGui::Spacing();
 					constexpr ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp;
 					if (ImGui::BeginTable("##ToolKeys", 2, flags))
 					{
 						ImGui::TableSetupScrollFreeze(0, 1);
-						ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthStretch, 0.4f);
-						ImGui::TableSetupColumn("Keys", ImGuiTableColumnFlags_WidthStretch, 0.6f);
+						ImGui::TableSetupColumn(Tr("Action"), ImGuiTableColumnFlags_WidthStretch, 0.4f);
+						ImGui::TableSetupColumn(Tr("Keys"), ImGuiTableColumnFlags_WidthStretch, 0.6f);
 						ImGui::TableHeadersRow();
 						const auto row = [](const char *action, const char *keys)
 						{
@@ -272,8 +402,16 @@ namespace SceneryEditorX::EditorWelcome
 					}
 					ImGui::EndTabItem();
 				}
+
+				if (ImGui::BeginTabItem(TrL("Interface"), nullptr, pageFlags(PreferencesPage::Interface)))
+				{
+					ImGui::Spacing();
+					DrawInterfacePage();
+					ImGui::EndTabItem();
+				}
 				ImGui::EndTabBar();
 			}
+			s.selectPage.reset();
 			ImGui::End();
 
 			if (changed)
@@ -287,10 +425,18 @@ namespace SceneryEditorX::EditorWelcome
 		bool flags = false, force = false;
 		if (const PlatformContext *platform = Application::Get().GetPlatformContext())
 		{
-			for (const std::string &arg : platform->GetCommandLineArgs())
+			const std::vector<std::string> &args = platform->GetCommandLineArgs();
+			for (size_t i = 0; i < args.size(); ++i)
 			{
+				const std::string &arg = args[i];
 				force |= arg == "--welcome";
 				flags |= arg.starts_with("--");
+				// --preferences [navigation|tools|interface]: opens Preferences on a page (screenshots, translator context)
+				if (arg == "--preferences")
+				{
+					const std::string page = i + 1 < args.size() && !args[i + 1].starts_with("--") ? args[++i] : std::string();
+					OpenPreferences(page == "interface" ? PreferencesPage::Interface : page == "tools" ? PreferencesPage::Tools : PreferencesPage::Navigation);
+				}
 			}
 		}
 		S().showWelcome = force || (!flags && !EditorPreferences::Get().keymapChosen);
@@ -302,9 +448,10 @@ namespace SceneryEditorX::EditorWelcome
 		DrawPreferences();
 	}
 
-	void OpenPreferences()
+	void OpenPreferences(const PreferencesPage page)
 	{
 		S().preferencesOpen = true;
+		S().selectPage = page;
 		ImGui::SetWindowFocus("Preferences###EditorPreferences");
 	}
 

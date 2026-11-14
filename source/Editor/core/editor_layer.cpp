@@ -48,6 +48,9 @@
 #include "facade_authoring.h"
 #include "facade_tool.h"
 #include "viewport_menus.h"
+#include <SceneryEditorX/core/localization.h>
+#include <SceneryEditorX/i18n/tr.h>
+#include <SceneryEditorX/renderer/ui/i18n_imgui.h>
 #include <Editor/panels/airport_panel.h>
 #include <Editor/panels/asset_shelf_panel.h>
 #include <Editor/panels/console_panel.h>
@@ -102,31 +105,33 @@ namespace SceneryEditorX
 	namespace
 	{
 		/**
-		 * Panel registry: PanelManager id, ImGui window name ("LABEL###Id") and strip icon.
-		 * The window names must match what each panel passes to EditorUI::BeginPanel().
+		 * Panel registry: PanelManager id, ImGui window name ("LABEL###Id"), display name (Window menu, strip
+		 * tooltips; translated when drawn) and strip icon. The window names must match what each panel passes to
+		 * EditorUI::BeginPanel(); they stay English here because the part after "###" is the window's ID.
 		 */
 		struct PanelInfo
 		{
 			const char *id;
 			const char *window;
+			Msg name;
 			const char *icon;
 		};
 
-		constexpr PanelInfo PANEL_VIEWPORT			= { "Viewport",			"VIEWPORT###Viewport",				SEDX_ICON_DESKTOP };
-		constexpr PanelInfo PANEL_VIEWPORT2			= { "Viewport2",		"VIEWPORT 2###Viewport2",			SEDX_ICON_CLONE };
-		constexpr PanelInfo PANEL_PROPERTIES		= { "Properties",		"PROPERTIES###Properties",			SEDX_ICON_SLIDERS };
-		constexpr PanelInfo PANEL_OUTLINER			= { "Outliner",			"OUTLINER###Outliner",				SEDX_ICON_LIST };
-		constexpr PanelInfo PANEL_ASSETS			= { "Assets",			"ASSETS###Assets",					SEDX_ICON_FOLDER_OPEN };
-		constexpr PanelInfo PANEL_CONSOLE			= { "Console",			"CONSOLE###Console",				SEDX_ICON_TERMINAL };
-		constexpr PanelInfo PANEL_SCENE_SETTINGS	= { "SceneSettings",	"SCENE SETTINGS###SceneSettings",	SEDX_ICON_GLOBE };
-		constexpr PanelInfo PANEL_CAMERA			= { "CameraSettings",	"CAMERA###CameraSettings",			SEDX_ICON_CAMERA };
-		constexpr PanelInfo PANEL_RENDERER			= { "RendererStats",	"RENDERER###RendererStats",			SEDX_ICON_TACHOMETER };
-		constexpr PanelInfo PANEL_XPLANE			= { "XPlaneLibrary",	"X-PLANE LIBRARY###XPlaneLibrary",	SEDX_ICON_PLANE };
-		constexpr PanelInfo PANEL_AIRPORTS			= { "Airports",			"AIRPORTS###Airports",				SEDX_ICON_GLOBE };
-		constexpr PanelInfo PANEL_PROJECT			= { "Project",			"PROJECT###Project",				SEDX_ICON_FILE_TEXT };
-		constexpr PanelInfo PANEL_FACADES			= { "FacadeInspector",	"FACADES###FacadeInspector",		SEDX_ICON_BUILDING_O };
-		constexpr PanelInfo PANEL_FACADE_EDITOR		= { "FacadeEditor",		"FACADE EDITOR###FacadeEditor",		SEDX_ICON_PICTURE_O };
-		constexpr PanelInfo PANEL_ENVIRONMENT		= { "Environment",		"ENVIRONMENT###Environment",		SEDX_ICON_SUN_O };
+		constexpr PanelInfo PANEL_VIEWPORT			= { "Viewport",			"VIEWPORT###Viewport", TrNoop("Viewport"),				SEDX_ICON_DESKTOP };
+		constexpr PanelInfo PANEL_VIEWPORT2			= { "Viewport2",		"VIEWPORT 2###Viewport2", TrNoop("Viewport 2"),			SEDX_ICON_CLONE };
+		constexpr PanelInfo PANEL_PROPERTIES		= { "Properties",		"PROPERTIES###Properties", TrNoop("Properties"),			SEDX_ICON_SLIDERS };
+		constexpr PanelInfo PANEL_OUTLINER			= { "Outliner",			"OUTLINER###Outliner", TrNoop("Outliner"),				SEDX_ICON_LIST };
+		constexpr PanelInfo PANEL_ASSETS			= { "Assets",			"ASSETS###Assets", TrNoop("Assets"),					SEDX_ICON_FOLDER_OPEN };
+		constexpr PanelInfo PANEL_CONSOLE			= { "Console",			"CONSOLE###Console", TrNoop("Console"),				SEDX_ICON_TERMINAL };
+		constexpr PanelInfo PANEL_SCENE_SETTINGS	= { "SceneSettings",	"SCENE SETTINGS###SceneSettings", TrNoop("Scene Settings"),	SEDX_ICON_GLOBE };
+		constexpr PanelInfo PANEL_CAMERA			= { "CameraSettings",	"CAMERA###CameraSettings", TrNoop("Camera"),			SEDX_ICON_CAMERA };
+		constexpr PanelInfo PANEL_RENDERER			= { "RendererStats",	"RENDERER###RendererStats", TrNoop("Renderer"),			SEDX_ICON_TACHOMETER };
+		constexpr PanelInfo PANEL_XPLANE			= { "XPlaneLibrary",	"X-PLANE LIBRARY###XPlaneLibrary", TrNoop("X-Plane Library"),	SEDX_ICON_PLANE };
+		constexpr PanelInfo PANEL_AIRPORTS			= { "Airports",			"AIRPORTS###Airports", TrNoop("Airports"),				SEDX_ICON_GLOBE };
+		constexpr PanelInfo PANEL_PROJECT			= { "Project",			"PROJECT###Project", TrNoop("Project"),				SEDX_ICON_FILE_TEXT };
+		constexpr PanelInfo PANEL_FACADES			= { "FacadeInspector",	"FACADES###FacadeInspector", TrNoop("Facades"),		SEDX_ICON_BUILDING_O };
+		constexpr PanelInfo PANEL_FACADE_EDITOR		= { "FacadeEditor",		"FACADE EDITOR###FacadeEditor", TrNoop("Facade Editor"),		SEDX_ICON_PICTURE_O };
+		constexpr PanelInfo PANEL_ENVIRONMENT		= { "Environment",		"ENVIRONMENT###Environment", TrNoop("Environment"),		SEDX_ICON_SUN_O };
 
 		constexpr PanelInfo s_StripPanels[] =
 		{
@@ -337,21 +342,21 @@ namespace SceneryEditorX
 
 		const std::filesystem::path resources = VFS::FromUtf8(ResourceCache::GetResourceDirectory());
 
-		m_PanelManager->AddPanel<SceneViewport>(PanelCategory::Viewer, PANEL_VIEWPORT.id, "Viewport", true, &m_Context);
-		m_PanelManager->AddPanel<SecondViewportPanel>(PanelCategory::Viewer, PANEL_VIEWPORT2.id, "Viewport 2", false, &m_Context);
-		m_PanelManager->AddPanel<PropertiesPanel>(PanelCategory::Editor, PANEL_PROPERTIES.id, "Properties", true, &m_Context);
-		m_PanelManager->AddPanel<OutlinerPanel>(PanelCategory::Editor, PANEL_OUTLINER.id, "Outliner", true, &m_Context);
-		m_PanelManager->AddPanel<AssetShelfPanel>(PanelCategory::Editor, PANEL_ASSETS.id, "Assets", true, resources);
-		m_PanelManager->AddPanel<ConsolePanel>(PanelCategory::Editor, PANEL_CONSOLE.id, "Console", true, m_LogSink);
-		m_PanelManager->AddPanel<XPlaneLibraryPanel>(PanelCategory::Editor, PANEL_XPLANE.id, "X-Plane Library", true, &m_Context);
-		m_PanelManager->AddPanel<AirportPanel>(PanelCategory::Editor, PANEL_AIRPORTS.id, "Airports", true, &m_Context);
-		m_PanelManager->AddPanel<ProjectPanel>(PanelCategory::Editor, PANEL_PROJECT.id, "Project", true, &m_Context);
-		m_PanelManager->AddPanel<FacadeInspectorPanel>(PanelCategory::Editor, PANEL_FACADES.id, "Facades", true, &m_Context);
-		m_PanelManager->AddPanel<FacadeEditorPanel>(PanelCategory::Editor, PANEL_FACADE_EDITOR.id, "Facade Editor", false, &m_Context);
-		m_PanelManager->AddPanel<EnvironmentPanel>(PanelCategory::Editor, PANEL_ENVIRONMENT.id, "Environment", true, &m_Context);
-		m_PanelManager->AddPanel<SceneSettingsPanel>(PanelCategory::Settings, PANEL_SCENE_SETTINGS.id, "Scene Settings", true);
-		m_PanelManager->AddPanel<CameraSettingsPanel>(PanelCategory::Settings, PANEL_CAMERA.id, "Camera", true);
-		m_PanelManager->AddPanel<RendererStatsPanel>(PanelCategory::Settings, PANEL_RENDERER.id, "Renderer", true);
+		m_PanelManager->AddPanel<SceneViewport>(PanelCategory::Viewer, PANEL_VIEWPORT.id, PANEL_VIEWPORT.name.text, true, &m_Context);
+		m_PanelManager->AddPanel<SecondViewportPanel>(PanelCategory::Viewer, PANEL_VIEWPORT2.id, PANEL_VIEWPORT2.name.text, false, &m_Context);
+		m_PanelManager->AddPanel<PropertiesPanel>(PanelCategory::Editor, PANEL_PROPERTIES.id, PANEL_PROPERTIES.name.text, true, &m_Context);
+		m_PanelManager->AddPanel<OutlinerPanel>(PanelCategory::Editor, PANEL_OUTLINER.id, PANEL_OUTLINER.name.text, true, &m_Context);
+		m_PanelManager->AddPanel<AssetShelfPanel>(PanelCategory::Editor, PANEL_ASSETS.id, PANEL_ASSETS.name.text, true, resources);
+		m_PanelManager->AddPanel<ConsolePanel>(PanelCategory::Editor, PANEL_CONSOLE.id, PANEL_CONSOLE.name.text, true, m_LogSink);
+		m_PanelManager->AddPanel<XPlaneLibraryPanel>(PanelCategory::Editor, PANEL_XPLANE.id, PANEL_XPLANE.name.text, true, &m_Context);
+		m_PanelManager->AddPanel<AirportPanel>(PanelCategory::Editor, PANEL_AIRPORTS.id, PANEL_AIRPORTS.name.text, true, &m_Context);
+		m_PanelManager->AddPanel<ProjectPanel>(PanelCategory::Editor, PANEL_PROJECT.id, PANEL_PROJECT.name.text, true, &m_Context);
+		m_PanelManager->AddPanel<FacadeInspectorPanel>(PanelCategory::Editor, PANEL_FACADES.id, PANEL_FACADES.name.text, true, &m_Context);
+		m_PanelManager->AddPanel<FacadeEditorPanel>(PanelCategory::Editor, PANEL_FACADE_EDITOR.id, PANEL_FACADE_EDITOR.name.text, false, &m_Context);
+		m_PanelManager->AddPanel<EnvironmentPanel>(PanelCategory::Editor, PANEL_ENVIRONMENT.id, PANEL_ENVIRONMENT.name.text, true, &m_Context);
+		m_PanelManager->AddPanel<SceneSettingsPanel>(PanelCategory::Settings, PANEL_SCENE_SETTINGS.id, PANEL_SCENE_SETTINGS.name.text, true);
+		m_PanelManager->AddPanel<CameraSettingsPanel>(PanelCategory::Settings, PANEL_CAMERA.id, PANEL_CAMERA.name.text, true);
+		m_PanelManager->AddPanel<RendererStatsPanel>(PanelCategory::Settings, PANEL_RENDERER.id, PANEL_RENDERER.name.text, true);
 
 		// Restore which panels were open last session.
 		m_PanelManager->Deserialize();
@@ -524,23 +529,30 @@ namespace SceneryEditorX
 	void EditorLayer::BuildMainMenus()
 	{
 		m_MainMenus.clear();
-		m_MainMenus.emplace_back("File", [this]() { EditorProjects::DrawFileMenu(&m_Context); });
-		m_MainMenus.emplace_back("Edit", [this]() { DrawEditMenu(); });
-		m_MainMenus.emplace_back("Scene", [this]() { DrawSceneMenu(); });
-		m_MainMenus.emplace_back("X-Plane", [this]() { DrawXPlaneMenu(); });
-		m_MainMenus.emplace_back("Facade", [this]() { DrawFacadeMenu(); });
-		m_MainMenus.emplace_back("Window", [this]() { DrawWindowMenu(); });
-		m_MainMenus.emplace_back("Viewport", [this]() { DrawViewportMenu(); });
-		m_MainMenus.emplace_back("Help", [this]()
+		// TRANSLATORS: The main menu bar (also the hotbox's first row)
+		m_MainMenus.emplace_back(Ctx("main-menu", "File"), [this]() { EditorProjects::DrawFileMenu(&m_Context); });
+		m_MainMenus.emplace_back(Ctx("main-menu", "Edit"), [this]() { DrawEditMenu(); });
+		m_MainMenus.emplace_back(Ctx("main-menu", "Scene"), [this]() { DrawSceneMenu(); });
+		m_MainMenus.emplace_back(Ctx("main-menu", "X-Plane"), [this]() { DrawXPlaneMenu(); });
+		m_MainMenus.emplace_back(Ctx("main-menu", "Facade"), [this]() { DrawFacadeMenu(); });
+		m_MainMenus.emplace_back(Ctx("main-menu", "Window"), [this]() { DrawWindowMenu(); });
+		m_MainMenus.emplace_back(Ctx("main-menu", "Viewport"), [this]() { DrawViewportMenu(); });
+		m_MainMenus.emplace_back(Ctx("main-menu", "Help"), [this]()
 		{
-			if (ImGui::MenuItem("About Scenery Editor X"))
+			if (ImGui::MenuItem(TrL("About Scenery Editor X")))
 				m_ShowAbout = true;
-			if (ImGui::MenuItem("Choose a Navigation Keymap..."))
+			if (ImGui::MenuItem(TrL("Choose a Navigation Keymap...")))
 				EditorWelcome::OpenWelcome();
-			if (ImGui::MenuItem("Controls && Shortcuts..."))
+			if (ImGui::MenuItem(TrL("Controls && Shortcuts...")))
 				EditorWelcome::OpenPreferences();
+			if (ImGui::MenuItem(TrL("Language...")))
+				EditorWelcome::OpenPreferences(EditorWelcome::PreferencesPage::Interface);
+			if (ImGui::MenuItem(TrL("Reload Translations")))
+				Localization::RequestReload();
+			EditorUI::ItemTooltip("Reads the language files again, including your own in the editor's settings folder (locale), "
+				"so a translation can be tested without restarting");
 			ImGui::Separator();
-			ImGui::TextDisabled("Viewport: right-click for the quad menu, hold Space for the hotbox");
+			ImGui::TextDisabled("%s", Tr("Viewport: right-click for the quad menu, hold Space for the hotbox"));
 		});
 		ViewportMenus::SetMainMenus(m_MainMenus);
 	}
@@ -551,7 +563,7 @@ namespace SceneryEditorX
 			return;
 		for (const auto &[name, items] : m_MainMenus)
 		{
-			if (ImGui::BeginMenu(name.c_str()))
+			if (ImGui::BeginMenu(TrL(name)))
 			{
 				items();
 				ImGui::EndMenu();
@@ -723,11 +735,11 @@ namespace SceneryEditorX
 		for (const PanelInfo &info : s_StripPanels)
 		{
 			if (PanelData *panel = FindPanel(info.id))
-				ImGui::MenuItem(EditorUI::IconLabel(info.icon, panel->Name).c_str(), nullptr, &panel->IsOpen);
+				ImGui::MenuItem(EditorUI::IconLabel(info.icon, info.name).c_str(), nullptr, &panel->IsOpen);
 		}
 
 		ImGui::Separator();
-		if (ImGui::MenuItem("Reset Layout"))
+		if (ImGui::MenuItem(TrL("Reset Layout")))
 			m_Context.requestLayoutReset = true;
 
 		ImGui::Separator();
@@ -926,7 +938,7 @@ namespace SceneryEditorX
 					continue;
 
 				ImGui::PushID(info.id);
-				if (EditorUI::StripButton(info.icon, panel->Name, panel->IsOpen, buttonSize, EditorUI::StripStyle::Tinted))
+				if (EditorUI::StripButton(info.icon, info.name, panel->IsOpen, buttonSize, EditorUI::StripStyle::Tinted))
 				{
 					panel->IsOpen = !panel->IsOpen;
 					m_PanelManager->Serialize();

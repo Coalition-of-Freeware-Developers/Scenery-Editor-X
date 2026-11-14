@@ -335,7 +335,7 @@ namespace SceneryEditorX
 						{
 							AptRunwayEnd &end = runway.ends[e];
 							ImGui::PushID(e);
-							EditorUI::PropertyLabel(e == 0 ? "End 1" : "End 2");
+							EditorUI::PropertyLabel(e == 0 ? Text("End 1") : Text("End 2"));
 							ImGui::InputText("##Designator", &end.designator, ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank);
 							geometry |= ImGui::IsItemDeactivatedAfterEdit();
 							geometry |= PropertyPosition(end.latitude, end.longitude);

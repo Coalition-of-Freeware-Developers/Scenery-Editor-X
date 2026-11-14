@@ -157,7 +157,7 @@ namespace SceneryEditorX::ViewportMenus
 
 		struct State
 		{
-			std::vector<std::pair<std::string, MenuDrawer>> mainMenus;
+			std::vector<std::pair<Msg, MenuDrawer>> mainMenus;
 			QuadState quad;
 			HotboxState hotbox;
 		};
@@ -470,7 +470,7 @@ namespace SceneryEditorX::ViewportMenus
 			const ImGuiStyle &style = ImGui::GetStyle();
 			float width = style.WindowPadding.x * 2.0f;
 			for (const auto &[name, items] : menus)
-				width += ImGui::CalcTextSize(name.c_str()).x + style.ItemSpacing.x * 2.0f;
+				width += ImGui::CalcTextSize(name.c_str(), nullptr, true).x + style.ItemSpacing.x * 2.0f;	// Not the "###" ID part
 			if (middle)
 				width += ImGui::CalcTextSize(middle).x + style.ItemSpacing.x * 4.0f;
 			const float height = ImGui::GetFrameHeight() + 2.0f;
@@ -570,7 +570,7 @@ namespace SceneryEditorX::ViewportMenus
 				// Row 1: the menu bar's menus
 				std::vector<std::pair<std::string, std::function<void()>>> mains;
 				for (const auto &[name, drawer] : s.mainMenus)
-					mains.emplace_back(name, drawer);
+					mains.emplace_back(TrL(name), drawer);
 				MenuRow("##HotboxMain", x, y - row * 1.5f, mains);
 
 				// Row 2: recent commands | the editor | facades
@@ -632,7 +632,7 @@ namespace SceneryEditorX::ViewportMenus
 
 	// -------------------------------------------------------
 
-	void SetMainMenus(std::vector<std::pair<std::string, MenuDrawer>> menus)
+	void SetMainMenus(std::vector<std::pair<Msg, MenuDrawer>> menus)
 	{
 		S().mainMenus = std::move(menus);
 	}

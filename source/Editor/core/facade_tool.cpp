@@ -1760,7 +1760,7 @@ namespace SceneryEditorX::FacadeTool
 							else
 								SelectWalls(item.id, { wall.index });
 						}
-						EditorUI::ItemTooltip(row == 0 && chain.closed ? "The front wall (headings in the facade's wall rules count from it)" : "Click to pick (Shift adds)");
+						EditorUI::ItemTooltip(row == 0 && chain.closed ? Text("The front wall (headings in the facade's wall rules count from it)") : Text("Click to pick (Shift adds)"));
 						ImGui::TableNextColumn();
 						ImGui::TextUnformatted(Meters(wall.length).c_str());
 						ImGui::TableNextColumn();
@@ -1788,8 +1788,7 @@ namespace SceneryEditorX::FacadeTool
 								ImGui::TextDisabled("%d%%", percent);
 						}
 						if (layout)
-							EditorUI::ItemTooltip(!layout->fits ? "The wall type's width / heading rules don't take this wall (X-Plane builds it anyway when walls are picked)"
-														  : "How much the facade's segments stretch to fill the wall (100% = their own size)");
+							EditorUI::ItemTooltip(!layout->fits ? Text("The wall type's width / heading rules don't take this wall (X-Plane builds it anyway when walls are picked)") : Text("How much the facade's segments stretch to fill the wall (100% = their own size)"));
 						ImGui::PopID();
 					}
 				}

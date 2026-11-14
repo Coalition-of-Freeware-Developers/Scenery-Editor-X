@@ -391,8 +391,7 @@ namespace SceneryEditorX::ProjectDialogs
 					form.latitude = FormatCoordinate(latitude);
 					form.longitude = FormatCoordinate(longitude);
 				}
-				EditorUI::ItemTooltip(airport ? "The ground in the middle of the viewport (the open airport or project)"
-											  : "The ground in the middle of the viewport: the new scenery lines up with what is open now");
+				EditorUI::ItemTooltip(airport ? Text("The ground in the middle of the viewport (the open airport or project)") : Text("The ground in the middle of the viewport: the new scenery lines up with what is open now"));
 			}
 			EditorUI::EndPropertyGrid();
 		}
@@ -538,8 +537,7 @@ namespace SceneryEditorX::ProjectDialogs
 					EditorUI::PropertyLabel("Project name");
 					ImGui::SetNextItemWidth(-FLT_MIN);
 					ImGui::InputTextWithHint("##projectName", defaultName.c_str(), &form.projectName);
-					EditorUI::ItemTooltip(airport ? "The scenery pack's folder and the project file are named after it (empty: \"ICAO - Name\")"
-												  : "The scenery pack's folder and the project file are named after it");
+					EditorUI::ItemTooltip(airport ? Text("The scenery pack's folder and the project file are named after it (empty: \"ICAO - Name\")") : Text("The scenery pack's folder and the project file are named after it"));
 					DrawProblem(problems, airport ? "projectName" : "name", airport || form.attempted || !form.projectName.empty());
 
 					EditorUI::PropertyLabel("Create in");
@@ -587,7 +585,7 @@ namespace SceneryEditorX::ProjectDialogs
 
 			ImGui::Spacing();
 			const float buttonWidth = 130.0f * dpi;
-			if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_PLUS, form.addAirport ? "Add" : "Create").c_str(), ImVec2(buttonWidth, 0.0f)))
+			if (ImGui::Button(EditorUI::IconLabel(SEDX_ICON_PLUS, form.addAirport ? Text("Add") : Text("Create")).c_str(), ImVec2(buttonWidth, 0.0f)))
 			{
 				form.attempted = true;
 				form.error.clear();

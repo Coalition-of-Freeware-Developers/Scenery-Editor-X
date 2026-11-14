@@ -81,6 +81,12 @@ namespace  SceneryEditorX::UI
 		 * @return A pointer to the requested font, or nullptr if not found.
 		 */
 		static ImFont* Get(const std::string& fontName);
+
+		/**
+		 * @brief A font by name, or nullptr when there is none (no assertion).
+		 * @param fontName The name of the font to find.
+		 */
+		static ImFont* Find(const std::string& fontName);
 	};
 
 }
