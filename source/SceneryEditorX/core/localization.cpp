@@ -144,24 +144,38 @@ namespace SceneryEditorX::Localization
 		}
 
 #if !defined(_WIN32) && !defined(__APPLE__)
-		/* @brief fontconfig's choice for a language: "file\nindex", or nullopt. */
+		/**
+		 * @brief fontconfig's choice for a language ("file\nindex" from fc-match), or nullopt. fc-match always names some
+		 * font, often one without the language's characters: the caller checks its glyph coverage before using it.
+		 * Without fontconfig (minimal installs, sandboxes such as Flatpak) the failure is logged and the known Noto
+		 * paths are tried.
+		 */
 		std::optional<Localization::FontFile> FontConfigMatch(const std::string_view language)
 		{
 			const std::string command = "fc-match -f '%{file}\\n%{index}' 'sans-serif:lang=" + std::string(language) + "' 2>/dev/null";
 			FILE *pipe = popen(command.c_str(), "r");
 			if (!pipe)
+			{
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Can't run fc-match to find a font for '{}' (is fontconfig installed?)", language);
 				return std::nullopt;
+			}
 			std::string output;
 			char buffer[512];
 			while (std::fgets(buffer, sizeof(buffer), pipe))
 				output += buffer;
-			pclose(pipe);
+			const int status = pclose(pipe);
 			const std::size_t newline = output.find('\n');
-			if (newline == std::string::npos)
+			if (status != 0 || newline == std::string::npos)
+			{
+				SEDX_CORE_WARN_TAG(LOG_TAG, "fc-match found no font for '{}' (exit status {}; is fontconfig installed?)", language, status);
 				return std::nullopt;
+			}
 			Localization::FontFile font { output.substr(0, newline), std::atoi(output.c_str() + newline + 1) };
 			if (font.path.empty() || !Exists(font.path))
+			{
+				SEDX_CORE_WARN_TAG(LOG_TAG, "fc-match named '{}' for '{}', which doesn't exist", font.path, language);
 				return std::nullopt;
+			}
 			return font;
 		}
 #endif
@@ -311,10 +325,11 @@ namespace SceneryEditorX::Localization
 		}
 	}
 
-	std::optional<FontFile> FindLanguageFont(const I18n::LanguageInfo &language)
+	std::vector<FontFile> FindLanguageFonts(const I18n::LanguageInfo &language)
 	{
+		std::vector<FontFile> found;
 		if (!language.NeedsCjkFont())
-			return std::nullopt;
+			return found;
 
 		// A font the user chose (settings.cfg)
 		if (State &s = S(); s.settings)
@@ -323,8 +338,9 @@ namespace SceneryEditorX::Localization
 			if (!chosen.empty())
 			{
 				if (Exists(chosen))
-					return FontFile { chosen, s.settings->GetIntOption(KEY_FONT_FACE, 0) };
-				SEDX_CORE_WARN_TAG(LOG_TAG, "{} '{}' doesn't exist: looking for a system font", KEY_FONT, chosen);
+					found.push_back({ chosen, s.settings->GetIntOption(KEY_FONT_FACE, 0), true });
+				else
+					SEDX_CORE_WARN_TAG(LOG_TAG, "{} '{}' doesn't exist: looking for a system font", KEY_FONT, chosen);
 			}
 		}
 
@@ -363,8 +379,12 @@ namespace SceneryEditorX::Localization
 				add(u8"/System/Library/Fonts/STHeiti Light.ttc", 0);
 				break;
 			case I18n::Script::Japanese:
-				add(u8"/System/Library/Fonts/\u30D2\u30E9\u30AE\u30CE\u89D2\u30B4\u30B7\u30C3\u30AF W3.ttc", 0);	// ヒラギノ角ゴシック W3
-				add(u8"/System/Library/Fonts/Hiragino Sans GB.ttc", 0);
+				// Hiragino Sans (Hiragino Kaku Gothic) in three weights, then Hiragino Maru Gothic ProN. Not Hiragino Sans GB: that is
+				// a Chinese font. The names are Japanese on disk.
+				add(u8"/System/Library/Fonts/\u30D2\u30E9\u30AE\u30CE\u89D2\u30B4\u30B7\u30C3\u30AF W3.ttc", 0);
+				add(u8"/System/Library/Fonts/\u30D2\u30E9\u30AE\u30CE\u89D2\u30B4\u30B7\u30C3\u30AF W4.ttc", 0);
+				add(u8"/System/Library/Fonts/\u30D2\u30E9\u30AE\u30CE\u89D2\u30B4\u30B7\u30C3\u30AF W6.ttc", 0);
+				add(u8"/System/Library/Fonts/\u30D2\u30E9\u30AE\u30CE\u4E38\u30B4 ProN W4.ttc", 0);
 				break;
 			case I18n::Script::Korean:
 				add(u8"/System/Library/Fonts/AppleSDGothicNeo.ttc", 0);
@@ -385,8 +405,8 @@ namespace SceneryEditorX::Localization
 #endif
 		for (const FontFile &candidate : candidates)
 			if (Exists(candidate.path))
-				return candidate;
-		return std::nullopt;
+				found.push_back(candidate);
+		return found;
 	}
 }
 

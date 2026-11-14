@@ -140,7 +140,9 @@ The dependency-light, cross-platform Catch2 unit suites that only need `source/`
   against CLDR for every language of the table, BCP-47 language matching (Chinese by script), the `std::format`-style
   formatter (no exceptions, no libc++ availability limits), the pseudo-locale, the translation service (fallbacks,
   translator overrides, missing-string log, lookups while another thread switches languages) and `Text`.
-  `MacroCollisionTests.cpp` includes the headers after X11's and Windows' macros. Standard library only, fully green.
+  `MacroCollisionTests.cpp` includes the headers after X11's and Windows' macros; `FontCoverageTests.cpp` checks the
+  font character-map reader that picks CJK fonts (it also reads `resources/fonts` when run from the repository root).
+  Standard library only, fully green.
 
 The other suites are **not** Linux-buildable as written: `MemoryAllocatorTests` links `vulkan-1` and needs the Vulkan
 SDK; `VulkanSmokeTests` (opt-in via `SEDX_ENABLE_VULKAN_SMOKE_TESTS`) needs the full engine.

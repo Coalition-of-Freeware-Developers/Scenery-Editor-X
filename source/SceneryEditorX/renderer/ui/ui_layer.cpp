@@ -35,6 +35,7 @@
 #include "source/imgui/imgui.h"
 #include "source/imgui/backends/imgui_impl_sdl3.h"
 #include <SceneryEditorX/core/localization.h>
+#include <SceneryEditorX/i18n/font_coverage.h>
 #include <SceneryEditorX/core/resource/resource_cache.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/filesystem/vfs.h>
@@ -61,23 +62,6 @@ namespace SceneryEditorX
 
 		// The UI fonts a language font is merged into (each must cover the language, or headers show '?')
 		constexpr const char *UI_FONTS[] = { "Default", "Light", "Medium", "SemiBold", "Bold" };
-
-		/* @brief Decodes UTF-8 into code points (for glyph coverage checks). */
-		std::vector<unsigned> CodePoints(const std::string_view text)
-		{
-			std::vector<unsigned> points;
-			for (std::size_t i = 0; i < text.size();)
-			{
-				const unsigned char lead = static_cast<unsigned char>(text[i]);
-				const std::size_t length = lead < 0x80 ? 1 : (lead & 0xE0) == 0xC0 ? 2 : (lead & 0xF0) == 0xE0 ? 3 : 4;
-				unsigned point = length == 1 ? lead : length == 2 ? lead & 0x1F : length == 3 ? lead & 0x0F : lead & 0x07;
-				for (std::size_t k = 1; k < length && i + k < text.size(); ++k)
-					point = (point << 6) | (static_cast<unsigned char>(text[i + k]) & 0x3F);
-				points.push_back(point);
-				i += length;
-			}
-			return points;
-		}
 
 		void LoadIniSettings()
 		{
@@ -265,23 +249,45 @@ namespace SceneryEditorX
 		if (!merged.insert(language->script).second)
 			return;
 
-		const std::optional<Localization::FontFile> font = Localization::FindLanguageFont(*language);
-		if (!font)
+		// The first candidate that has every character of the language's sample (the user's own choice whatever it has);
+		// else the one that lacks the fewest. A file name, or fontconfig's answer, doesn't promise the characters.
+		const std::u32string sample = I18n::DecodeUtf8(language->Sample());
+		std::optional<Localization::FontFile> font;
+		std::unique_ptr<std::string> data;
+		std::size_t fewestMissing = sample.size() + 1;
+		for (const Localization::FontFile &candidate : Localization::FindLanguageFonts(*language))
+		{
+			std::ifstream file(VFS::FromUtf8(candidate.path), std::ios::binary);
+			auto bytes = std::make_unique<std::string>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+			const std::optional<std::size_t> missing = I18n::CountMissingGlyphs(*bytes, candidate.face, sample);
+			if (!missing)
+			{
+				SEDX_CORE_WARN_TAG("UILayer", "Skipping {} (face {}) for {}: not a font this can read", candidate.path, candidate.face, language->englishName);
+				continue;
+			}
+			if (*missing > 0 && !candidate.chosen)
+				SEDX_CORE_INFO_TAG("UILayer", "{} (face {}) lacks {} of the {} sample characters", candidate.path, candidate.face, *missing, language->englishName);
+			if (*missing < fewestMissing)
+			{
+				fewestMissing = *missing;
+				font = candidate;
+				data = std::move(bytes);
+			}
+			if (*missing == 0 || candidate.chosen)
+				break;
+		}
+		if (!font || (!font->chosen && !sample.empty() && fewestMissing == sample.size()))
 		{
 			SEDX_CORE_WARN_TAG("UILayer", "No font for {} found: install the {} language fonts of the operating system, or set ui.language_font "
 				"in settings.cfg to a font file. Its text shows as '?' until then", language->englishName, language->englishName);
 			return;
 		}
+		if (fewestMissing > 0)
+			SEDX_CORE_WARN_TAG("UILayer", "Using {} (face {}) for {}, which lacks {} of its sample characters", font->path, font->face,
+				language->englishName, fewestMissing);
 
 		// Read once and shared by the five UI fonts; the atlas doesn't own it, so it stays for the whole session
 		static std::vector<std::unique_ptr<std::string>> fontData;
-		std::ifstream file(VFS::FromUtf8(font->path), std::ios::binary);
-		auto data = std::make_unique<std::string>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-		if (data->empty())
-		{
-			SEDX_CORE_WARN_TAG("UILayer", "Can't read the {} font {}", language->englishName, font->path);
-			return;
-		}
 
 		ImGuiIO &io = ImGui::GetIO();
 		for (const char *name : UI_FONTS)
@@ -298,13 +304,6 @@ namespace SceneryEditorX
 			io.Fonts->AddFontFromMemoryTTF(data->data(), static_cast<int>(data->size()), FONT_SIZE, &config);
 		}
 
-		std::size_t missing = 0;
-		ImFont *regular = UI::Fonts::Find("Default");
-		for (const unsigned point : CodePoints(language->Sample()))
-			if (point <= 0xFFFF && !regular->IsGlyphInFont(static_cast<ImWchar>(point)))
-				++missing;
-		if (missing > 0)
-			SEDX_CORE_WARN_TAG("UILayer", "{} (face {}) lacks {} of the {} sample characters", font->path, font->face, missing, language->englishName);
 		SEDX_CORE_INFO_TAG("UILayer", "Merged {} (face {}, {:.1f} MB) into the UI fonts for {}", font->path, font->face,
 			static_cast<double>(data->size()) / (1024.0 * 1024.0), language->englishName);
 		fontData.push_back(std::move(data));

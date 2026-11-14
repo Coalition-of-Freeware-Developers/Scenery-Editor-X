@@ -30,15 +30,18 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: localization-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
+# Concurrency is per job: a newer push cancels the tool tests still running for an older one, but the template job is
+# never cancelled midway, since it may be committing and pushing to the branch. Its runs queue instead (GitHub keeps
+# only the newest waiting one), and each checks out the branch as it is when it starts, so it sees what the one before
+# it pushed.
 jobs:
   tool-tests:
     name: Tool tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    concurrency:
+      group: localization-tests-${{ matrix.os }}-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
@@ -59,6 +62,9 @@ jobs:
     name: Template and catalogs
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    concurrency:
+      group: localization-template-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: false
     permissions:
       contents: write   # Commits the refreshed files to the pull request's branch
     env:
@@ -128,7 +134,11 @@ jobs:
           git add -- resources/locale
           git commit --quiet -m "Update the translation template and catalogs" \
             -m "Extracted from the code by the localization workflow (tools/i18n/sedx_i18n.py extract and update)."
-          git push origin "HEAD:refs/heads/$HEAD_REF"
+          if ! git push origin "HEAD:refs/heads/$HEAD_REF"; then
+            echo "::notice::$HEAD_REF moved while this ran: the run for its newer commit refreshes the files instead."
+            echo "$HEAD_REF moved while this ran; the run for its newer commit refreshes the files." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           echo "Committed the refreshed template and catalogs to $HEAD_REF: pull before pushing to it again." | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the changes as a patch

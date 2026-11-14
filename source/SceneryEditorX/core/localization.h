@@ -98,14 +98,17 @@ namespace SceneryEditorX
 		{
 			std::string path;
 			int face = 0;
+			bool chosen = false;	// settings.cfg's ui.language_font: used even when it lacks some characters
 		};
 
 		/**
-		 * @brief The font to merge into the UI fonts for a script Open Sans doesn't cover (Chinese, Japanese, Korean):
-		 * settings.cfg's ui.language_font when set, else the operating system's regional UI font, else a Noto Sans CJK
-		 * install. Nullopt when the language needs none, or none was found.
+		 * @brief The fonts that could be merged into the UI fonts for a script Open Sans doesn't cover (Chinese, Japanese,
+		 * Korean), best first and only those that exist: settings.cfg's ui.language_font when set, then the operating
+		 * system's regional UI fonts (fontconfig's choice on Linux), then Noto Sans CJK installs. The caller checks each
+		 * one's glyph coverage (I18n::CountMissingGlyphs) and takes the first that has the language's characters, since a
+		 * file name or fontconfig's answer doesn't promise them. Empty when the language needs none, or none was found.
 		 */
-		std::optional<FontFile> FindLanguageFont(const I18n::LanguageInfo &language);
+		std::vector<FontFile> FindLanguageFonts(const I18n::LanguageInfo &language);
 	}
 }
 

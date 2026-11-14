@@ -14,7 +14,8 @@ versions.
   `ui.language = "system"` in `settings.cfg` (the new default) follows the operating system's languages; `--language
   <tag>` picks one for a run. German and Japanese ship as machine-drafted catalogs for native speakers to review;
   translations are made on Hosted Weblate (`docs/localization-translator-guide.md`). Chinese, Japanese and Korean use
-  the system's regional font, merged into the UI fonts when chosen. Translated widgets keep their English IDs, so the
+  the system's regional font, merged into the UI fonts when chosen (the first one that has the language's characters,
+  checked in its character map, 0.2.91.592). Translated widgets keep their English IDs, so the
   docking layout and window state stay as they are. `--language qps-ploc` (the pseudo-locale) shows which text isn't
   translatable yet, `--i18n-log-missing` lists the strings a language lacks, and a translator's copy in the settings
   folder's `locale` folder replaces the bundled one (**Help › Reload Translations**). For developers: the `Tr`, `TrL`,

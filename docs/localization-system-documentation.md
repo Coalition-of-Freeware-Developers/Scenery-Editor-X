@@ -130,7 +130,10 @@ Lookup falls back per string: the language's catalog, then its base language's (
 The UI fonts (Open Sans) cover Latin, Greek and Cyrillic. For Chinese, Japanese and Korean the editor merges the
 operating system's regional font into all five UI fonts when that language is chosen: Windows `msyh.ttc`, `msjh.ttc`,
 `YuGothM.ttc`, `malgun.ttf`; macOS PingFang / Hiragino / Apple SD Gothic Neo; Linux fontconfig's choice or Noto Sans
-CJK. `ui.language_font` (and `ui.language_font_face` for a `.ttc`) in `settings.cfg` picks another file. A merged font
+CJK. Each candidate's character map is checked against a sample of the language's characters
+(`i18n/font_coverage.h`) and the first that has them all is used, so a font that only looks right (a Chinese font for
+Japanese, whatever fontconfig answered) is passed over; the log names each one skipped. `ui.language_font` (and
+`ui.language_font_face` for a `.ttc`) in `settings.cfg` picks another file, used whatever it covers. A merged font
 stays until the editor closes, so after switching between two CJK languages, shared Han characters keep the first one's
 shapes until a restart. Without a font the text shows as `?` and the log says what to install.
 
