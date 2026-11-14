@@ -187,11 +187,19 @@ namespace SceneryEditorX::Localization
 				case I18n::Script::Korean: language = "ko"; break;
 				default: return std::nullopt;
 			}
+			// fc-match always prints a font when it runs: no output means it isn't there (no fontconfig, a sandbox), which
+			// won't change during the session, so it isn't started again. A search that found nothing usable is retried on
+			// the next language change, but without a process when fontconfig is missing
+			static bool unavailable = false;
+			if (unavailable)
+				return std::nullopt;
+
 			const std::string command = std::string("fc-match -f '%{file}\\n%{index}' 'sans-serif:lang=") + language + "' 2>/dev/null";
 			FILE *pipe = popen(command.c_str(), "r");
 			if (!pipe)
 			{
-				SEDX_CORE_WARN_TAG(LOG_TAG, "Can't run fc-match to find a font for '{}' (is fontconfig installed?)", language);
+				unavailable = true;
+				SEDX_CORE_WARN_TAG(LOG_TAG, "Can't run fc-match to find a font for '{}' (is fontconfig installed?); not trying again", language);
 				return std::nullopt;
 			}
 			std::string output;
@@ -199,10 +207,16 @@ namespace SceneryEditorX::Localization
 			while (std::fgets(buffer, sizeof(buffer), pipe))
 				output += buffer;
 			const int status = pclose(pipe);
+			if (output.empty())
+			{
+				unavailable = true;
+				SEDX_CORE_WARN_TAG(LOG_TAG, "fc-match gave no answer for '{}' (exit status {}; is fontconfig installed?); not trying again", language, status);
+				return std::nullopt;
+			}
 			const std::size_t newline = output.find('\n');
 			if (status != 0 || newline == std::string::npos)
 			{
-				SEDX_CORE_WARN_TAG(LOG_TAG, "fc-match found no font for '{}' (exit status {}; is fontconfig installed?)", language, status);
+				SEDX_CORE_WARN_TAG(LOG_TAG, "fc-match found no font for '{}' (exit status {})", language, status);
 				return std::nullopt;
 			}
 			// The face index of a collection; anything that isn't a small number means the first face
